@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*- #
+
+# Basic settings
+
+AUTHOR = u"Iuri de Silvio"
+SITENAME = u"Not Enough Memory"
+SITEURL = "http://www.notenoughmemory.com"
+
+PATH = "source"
+OUTPUT_PATH = "output/"
+
+TIMEZONE = "America/Sao_Paulo"
+
+# URL settings
+
+ARTICLE_SAVE_AS = ARTICLE_URL = "{date:%Y}/{date:%m}/{slug}.html"
+ARTICLE_LANG_URL =  "{lang}/" + ARTICLE_URL
+ARTICLE_LANG_SAVE_AS = "{lang}/" + ARTICLE_SAVE_AS
+AUTHOR_SAVE_AS = AUTHOR_URL = "author/{slug}.html"
+CATEGORY_SAVE_AS = CATEGORY_URL = "category/{slug}.html"
+TAG_SAVE_AS = TAG_URL = "tag/{slug}.html"
+
+# Date format and locale
+
+# Feed settings
+
+FEED_DOMAIN = SITEURL
+
+FEED = "feed/atom.xml"
+FEED_RSS = "feed/rss.xml"
+
+CATEGORY_FEED = "feed/category/%s." + FEED
+CATEGORY_FEED_RSS = "feed/category/%s." + FEED_RSS
+
+TAG_FEED = "feed/tag/%s." + FEED
+TAG_FEED_RSS = "feed/tag/%s." + FEED_RSS
+
+# FeedBurner
+
+# Pagination
+
+DEFAULT_PAGINATION = 10
+
+# Tag cloud
+
+# Translations
+
+DEFAULT_LANG = "en"
+TRANSLATION_FEED = "feed/translation/%s.atom.xml"
+
+# Ordering content
+
+REVERSE_ARCHIVE_ORDER = True
+
+# Theming
+
+
+# Asset management
+
+
+# Theme specific
+
+DISQUS_SITENAME = "notenoughmemory"
+#GITHUB_URL = "https://github.com/iurisilvio/notenoughmemory"
+GOOGLE_ANALYTICS = "UA-19012783-1"
+TWITTER_USERNAME = "iurisilvio"
+
+# Blogroll
+LINKS =  (("FunBlocker", "https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"),
+          ("bottle-sqlalchemy", "https://github.com/iurisilvio/bottle-sqlalchemy"),
+          ("Pricez", "http://www.pricez.com.br"),)
+
+# Social widget
+SOCIAL = (("Twitter", "https://twitter.com/iurisilvio"),
+          ("GitHub", "https://github.com/iurisilvio"),
+          ("LinkedIn", "http://br.linkedin.com/in/iurisilvio"),
+          ("Facebook", "https://www.facebook.com/iurisilvio"),)
+
+FILES_TO_COPY = (("extra/CNAME", "CNAME"),)
