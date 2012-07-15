@@ -55,7 +55,6 @@ REVERSE_ARCHIVE_ORDER = True
 
 # Theming
 
-
 # Asset management
 
 
@@ -63,7 +62,7 @@ REVERSE_ARCHIVE_ORDER = True
 
 DISQUS_SITENAME = "notenoughmemory"
 #GITHUB_URL = "https://github.com/iurisilvio/notenoughmemory"
-GOOGLE_ANALYTICS = "UA-19012783-1"
+GOOGLE_ANALYTICS = "UA-33399692-1"
 TWITTER_USERNAME = "iurisilvio"
 
 # Blogroll
