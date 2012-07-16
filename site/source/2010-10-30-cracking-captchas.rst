@@ -18,7 +18,6 @@ It is really easy to clean the image with some Python tools.
     def convert_image(image, threshold=30):
         for y in range(image.size[1]):
             for x in range(image.size[0]):
-                # based on a thre
                 color_original = image.getpixel((x, y))
                 color_bw = (0, 0, 0) if max(color_original) < threshold else (255, 255, 255)
                 image.putpixel((x, y), color_bw)
