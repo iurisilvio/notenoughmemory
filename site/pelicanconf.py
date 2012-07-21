@@ -12,6 +12,8 @@ OUTPUT_PATH = "output/"
 
 TIMEZONE = "America/Sao_Paulo"
 
+ARTICLE_EXCLUDES = ("pages", "drafts")
+
 # URL settings
 
 ARTICLE_SAVE_AS = ARTICLE_URL = "{date:%Y}/{date:%m}/{slug}.html"
@@ -20,6 +22,8 @@ ARTICLE_LANG_SAVE_AS = "{lang}/" + ARTICLE_SAVE_AS
 AUTHOR_SAVE_AS = AUTHOR_URL = "author/{slug}.html"
 CATEGORY_SAVE_AS = CATEGORY_URL = "category/{slug}.html"
 TAG_SAVE_AS = TAG_URL = "tag/{slug}.html"
+
+
 
 # Date format and locale
 
