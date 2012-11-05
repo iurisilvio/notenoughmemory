@@ -71,8 +71,7 @@ TWITTER_USERNAME = "iurisilvio"
 
 # Blogroll
 LINKS =  (("FunBlocker", "https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"),
-          ("bottle-sqlalchemy", "https://github.com/iurisilvio/bottle-sqlalchemy"),
-          ("Pricez", "http://www.pricez.com.br"),)
+          ("bottle-sqlalchemy", "https://github.com/iurisilvio/bottle-sqlalchemy"))
 
 # Social widget
 SOCIAL = (("Twitter", "https://twitter.com/iurisilvio"),
