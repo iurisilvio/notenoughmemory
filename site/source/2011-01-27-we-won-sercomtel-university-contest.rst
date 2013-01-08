@@ -15,14 +15,14 @@ I got involved in this contest because of `ITABits <http://blogs.alphachannel.co
 
 You can see below two pics of this app.
 
-.. image:: images/transita/map.png
+.. image:: |filename|images/transita/map.png
     :width: 328px
     :height: 486px
     :scale: 50%
     :alt: transita map
     :align: center
 
-.. image:: images/transita/list.png
+.. image:: |filename|images/transita/list.png
     :width: 328px
     :height: 486px
     :scale: 50%

@@ -7,11 +7,11 @@ Cracking Captchas
 
 During PythonBrasil[6], we discussed about cracking captchas. I already worked on it to automate some tasks with a stupid captcha. A lot of internet voting systems and forms security are based on captcha.
 
-.. image:: images/cracking-captchas/original.jpg
+.. image:: |filename|images/cracking-captchas/original.jpg
 
 It is really easy to clean the image with some Python tools.
 
-.. image:: images/cracking-captchas/cleaned.jpg
+.. image:: |filename|images/cracking-captchas/cleaned.jpg
 
 .. code-block:: python
 
