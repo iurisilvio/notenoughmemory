@@ -2,7 +2,7 @@ ASP.NET MaskedEdit is broken in WebKit
 ######################################
 
 :date: 2012-07-19
-:tags: csharp, hack
+:tags: csharp, hack, issue
 :category: programming
 
 Ajax Control Tookit is one of an important library in .NET world. It handles a lot of dynamic JavaScript things you do not want to do alone.
