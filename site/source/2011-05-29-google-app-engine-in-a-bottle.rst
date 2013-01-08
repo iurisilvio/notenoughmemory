@@ -9,7 +9,7 @@ First of all, you must know `bottle <http://bottlepy.org>`_ and `Google App Engi
 
 Add ``bottle.py`` to your source folder and create a ``helloworld.py`` file with this content:
 
-.. code:: python
+.. code-block:: python
 
     from google.appengine.ext.webapp import util
     import bottle
