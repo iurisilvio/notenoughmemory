@@ -5,7 +5,9 @@
 :tags: 24pullrequests, post mortem
 :category: stats
 
-During last december, I attended to `24pullrequests.com <http://24pullrequests.com>`_. After it, I want to know how much a simple gamification over a common task can improve the results. Yes, I always helped some projects with pull requests, issues, code reviews, but during 24pullrequests project, I increased my work in GitHub open source projects.
+During last december, I attended to `24pullrequests.com <http://24pullrequests.com>`_, a project to engage people to make one pull request per day until Christmas.
+
+After it, I want to know how much a simple gamification over a common task can improve the results. Yes, I always helped some projects with pull requests, issues, code reviews, but during 24pullrequests project, I increased my work in GitHub open source projects.
 
 So, I used data from GitHub to understand the impact of 24pullrequests. My numbers does not match public 24pullrequests numbers, but I did it based in GitHub data and I expect it is correct (check `andrew/24pullrequests#236 <https://github.com/andrew/24pullrequests/issues/236>`_).
 
