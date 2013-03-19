@@ -77,6 +77,7 @@ LINKS =  (("FunBlocker", "https://chrome.google.com/webstore/detail/cgdkiknkffmd
 SOCIAL = (("Twitter", "https://twitter.com/iurisilvio"),
           ("GitHub", "https://github.com/iurisilvio"),
           ("LinkedIn", "http://br.linkedin.com/in/iurisilvio"),
-          ("Facebook", "https://www.facebook.com/iurisilvio"),)
+          ("Facebook", "https://www.facebook.com/iurisilvio"),
+          ("Google+", "https://plus.google.com/111773075021477618488"),)
 
 FILES_TO_COPY = (("extra/CNAME", "CNAME"),)
