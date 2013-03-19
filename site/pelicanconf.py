@@ -31,13 +31,13 @@ TAG_SAVE_AS = TAG_URL = "tag/{slug}.html"
 
 FEED_DOMAIN = SITEURL
 
-FEED = "feed/atom.xml"
+FEED_ATOM = "feed/atom.xml"
 FEED_RSS = "feed/rss.xml"
 
-CATEGORY_FEED = "feed/category/%s." + FEED
+CATEGORY_FEED_ATOM = "feed/category/%s." + FEED_ATOM
 CATEGORY_FEED_RSS = "feed/category/%s." + FEED_RSS
 
-TAG_FEED = "feed/tag/%s." + FEED
+TAG_FEED_ATOM = "feed/tag/%s." + FEED_ATOM
 TAG_FEED_RSS = "feed/tag/%s." + FEED_RSS
 
 # FeedBurner
@@ -51,7 +51,7 @@ DEFAULT_PAGINATION = 10
 # Translations
 
 DEFAULT_LANG = "en"
-TRANSLATION_FEED = "feed/translation/%s.atom.xml"
+TRANSLATION_FEED_ATOM = "feed/translation/%s.atom.xml"
 
 # Ordering content
 
