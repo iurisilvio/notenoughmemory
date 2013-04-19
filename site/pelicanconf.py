@@ -80,4 +80,7 @@ SOCIAL = (("Twitter", "https://twitter.com/iurisilvio"),
           ("Facebook", "https://www.facebook.com/iurisilvio"),
           ("Google+", "https://plus.google.com/111773075021477618488"),)
 
-FILES_TO_COPY = (("extra/CNAME", "CNAME"),)
+FILES_TO_COPY = (
+    ("extra/CNAME", "CNAME"),
+    ("extra/google4e0a3411175d335b.html", "google4e0a3411175d335b.html"),
+)
