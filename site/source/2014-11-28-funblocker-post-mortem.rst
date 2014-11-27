@@ -3,7 +3,7 @@ Funblocker: Post mortem
 
 :date: 2014-11-28
 :tags: funblocker
-:category: programming, stats
+:category: stats
 
 Long time, no text. I'll try to increase the frequency of my posts and don't give up because of the lack of time and excess of lazyness.
 
