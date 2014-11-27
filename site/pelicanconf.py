@@ -12,17 +12,16 @@ OUTPUT_PATH = "output/"
 
 TIMEZONE = "America/Sao_Paulo"
 
-ARTICLE_EXCLUDES = ("pages", "drafts")
+ARTICLE_EXCLUDES = ("pages", "drafts", "extra")
 
 # URL settings
 
 ARTICLE_SAVE_AS = ARTICLE_URL = "{date:%Y}/{date:%m}/{slug}.html"
-ARTICLE_LANG_URL =  "{lang}/" + ARTICLE_URL
+ARTICLE_LANG_URL = "{lang}/" + ARTICLE_URL
 ARTICLE_LANG_SAVE_AS = "{lang}/" + ARTICLE_SAVE_AS
 AUTHOR_SAVE_AS = AUTHOR_URL = "author/{slug}.html"
 CATEGORY_SAVE_AS = CATEGORY_URL = "category/{slug}.html"
 TAG_SAVE_AS = TAG_URL = "tag/{slug}.html"
-
 
 
 # Date format and locale
@@ -65,13 +64,13 @@ REVERSE_ARCHIVE_ORDER = True
 # Theme specific
 
 DISQUS_SITENAME = "notenoughmemory"
-#GITHUB_URL = "https://github.com/iurisilvio/notenoughmemory"
+# GITHUB_URL = "https://github.com/iurisilvio/notenoughmemory"
 GOOGLE_ANALYTICS = "UA-33399692-1"
 TWITTER_USERNAME = "iurisilvio"
 
 # Blogroll
-LINKS =  (("FunBlocker", "https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"),
-          ("bottle-sqlalchemy", "https://github.com/iurisilvio/bottle-sqlalchemy"))
+LINKS = (("FunBlocker", "https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"),
+         ("bottle-sqlalchemy", "https://github.com/iurisilvio/bottle-sqlalchemy"))
 
 # Social widget
 SOCIAL = (("Twitter", "https://twitter.com/iurisilvio"),
@@ -80,7 +79,12 @@ SOCIAL = (("Twitter", "https://twitter.com/iurisilvio"),
           ("Facebook", "https://www.facebook.com/iurisilvio"),
           ("Google+", "https://plus.google.com/111773075021477618488"),)
 
-FILES_TO_COPY = (
-    ("extra/CNAME", "CNAME"),
-    ("extra/google4e0a3411175d335b.html", "google4e0a3411175d335b.html"),
-)
+STATIC_PATHS = [
+    "images",
+    "extra/CNAME",
+    "extra/google4e0a3411175d335b.html",
+]
+EXTRA_PATH_METADATA = {
+    'extra/CNAME': {'path': 'CNAME'},
+    'extra/google4e0a3411175d335b.html': {'path': 'google4e0a3411175d335b.html'},
+}
