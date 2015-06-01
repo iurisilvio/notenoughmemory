@@ -5,14 +5,16 @@ Nginx quick configuration
 :tags: nginx, cache, load balance
 :category: devops
 
-Nginx is an HTTP server with lots of features. Most of them are easy to configure, but maybe you don't know they exist.
+Nginx is an HTTP server with lots of features. The configuration is easy, but maybe you don't even know the feature exist.
 
-I want to present some nginx features and give you some pointers to continue
-your research.
+I want to present some nginx features and give you some pointers to continue your research.
 
 
 The basics
 ==========
+
+The basic usage of nginx is to make the reverse proxy to your application. Nginx listen to port ``80`` waiting for requests and manage
+the connections, passing the requests to your upstream application server.
 
 .. code:: nginx
 
@@ -24,11 +26,9 @@ The basics
         }
     }
 
-A very simple reverse proxy configuration, it just send the request to
-upstream at `localhost:8080`.
+The `proxy_pass` directive proxy the request as HTTP to your application listening port ``8080`.
 
-The `proxy_pass` directive proxy the request as HTTP. To send the request to
-your WSGI application, you must use `uwsgi_pass`.
+You can use `uwsgi_pass` to make nginx convert the HTTP to a WSGI request and send it to your WSGI application.
 
 .. code:: nginx
 
@@ -48,7 +48,7 @@ Most features work for HTTP and uWSGI proxy, with some small configuration chang
 SSL Termination
 ===============
 
-Nginx can terminate the secure connection and send it to your application as plain HTTP. In most cases, it is completely safe.
+Nginx terminate the SSL connection and send it to your application as plain HTTP.
 
 .. code:: nginx
 
@@ -62,8 +62,7 @@ Nginx can terminate the secure connection and send it to your application as pla
         }
     }
 
-
-If you want a HTTPS only website, redirect the HTTP traffic to HTTPS. Add another server block to do it.
+If you want a HTTPS only website, add another server block to redirect the HTTP traffic to HTTPS.
 
 .. code:: nginx
 
@@ -73,12 +72,10 @@ If you want a HTTPS only website, redirect the HTTP traffic to HTTPS. Add anothe
         return 301 https://$host$request_uri;
     }
 
-
 Static files
 ============
 
-Do not make your application serve static files, like images and javascripts. Your application is slow, maybe it render the asset for each request. Nginx is able to serve some thousands of static files per second, without hiccups.
-
+Nginx serve some thousands of static files per second, without hiccups. Do not make your application serve static files, like images and javascripts. Your application is slow, maybe it'll re-render the same asset for each request.
 
 .. code:: nginx
 
@@ -98,8 +95,9 @@ Do not make your application serve static files, like images and javascripts. Yo
         }
     }
 
-The `try_files` directive in `/static/` block will check `/some/path/generated/static/` and `/some/path/cache/static/` for your requested file and if it does not exist, send the request to your application.
+The ``try_files`` directive in ``/static/`` block will check ``/some/path/generated/static/`` and ``/some/path/cache/static/`` for your requested file and if it does not exist, send the request to your application.
 
+You can change the last ``try_files`` parameter with ``=404`` to answer with a 404 instead of pass the request to application.
 
 Load balancing
 ==============
@@ -121,10 +119,9 @@ If you want a high available application, nginx can be your load balancer to dis
         }
     }
 
-Nginx send the request to your `yourapp` upstream, choosing one server in a weighted round robin way. 5 requests to the first server, 1 request to the second server and so on. If your servers are down, it sends the request to your backup server.
+Nginx send the request to your ``yourapp`` upstream, choosing one server in a weighted round robin way. 5 requests to the first server, 1 request to the second server and so on. If your servers are down, it sends the request to your backup server.
 
 If one server fail to answer or give an HTTP error, nginx send the request to the next server. No additional configuration needed.
-
 
 Caching
 =======
@@ -161,7 +158,7 @@ Dynamic upstreams
 
 The commercial subscription has this feature built-in, but you probably don't want one. It costs some thousand dollars per server.
 
-The simple way to do it is update the configuration file, adding/removing upstream servers. The `nginx reload` command update the configuration without
+The simple way to do it is update the configuration file, adding/removing upstream servers. The ``nginx reload`` command update the configuration without
 downtime.
 
 
