@@ -5,7 +5,7 @@
 
 AUTHOR = u"Iuri de Silvio"
 SITENAME = u"Not Enough Memory"
-SITEURL = "http://www.notenoughmemory.com"
+SITEURL = "http://notenoughmemory.com"
 RELATIVE_URLS = True
 
 PATH = "source"
