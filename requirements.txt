@@ -1,3 +1,4 @@
 ghp-import
 -e externals/pelican
+-e externals/pelican-plugins
 

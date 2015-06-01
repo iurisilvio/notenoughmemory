@@ -6,6 +6,7 @@
 AUTHOR = u"Iuri de Silvio"
 SITENAME = u"Not Enough Memory"
 SITEURL = "http://www.notenoughmemory.com"
+RELATIVE_URLS = True
 
 PATH = "source"
 OUTPUT_PATH = "output/"
@@ -87,4 +88,11 @@ STATIC_PATHS = [
 EXTRA_PATH_METADATA = {
     'extra/CNAME': {'path': 'CNAME'},
     'extra/google4e0a3411175d335b.html': {'path': 'google4e0a3411175d335b.html'},
+}
+
+PLUGIN_PATHS = ['../externals/pelican-plugins/']
+PLUGINS = ['sitemap']
+
+SITEMAP = {
+    'format': 'xml',
 }

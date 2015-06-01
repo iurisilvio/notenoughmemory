@@ -1,5 +1,5 @@
 Funblocker post mortem
-#######################
+######################
 
 :date: 2014-11-28
 :tags: funblocker

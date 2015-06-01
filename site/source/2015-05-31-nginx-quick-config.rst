@@ -9,7 +9,6 @@ Nginx is an HTTP server with lots of features. The configuration is easy, but ma
 
 I want to present some nginx features and give you some pointers to continue your research.
 
-
 The basics
 ==========
 
@@ -26,9 +25,9 @@ the connections, passing the requests to your upstream application server.
         }
     }
 
-The `proxy_pass` directive proxy the request as HTTP to your application listening port ``8080`.
+The ``proxy_pass`` directive proxy the request as HTTP to your application listening port ``8080``.
 
-You can use `uwsgi_pass` to make nginx convert the HTTP to a WSGI request and send it to your WSGI application.
+You can use ``uwsgi_pass`` to make nginx convert the HTTP to a WSGI request and send it to your WSGI application.
 
 .. code:: nginx
 
