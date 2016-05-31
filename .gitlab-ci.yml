@@ -3,7 +3,7 @@ image: python:2.7-alpine
 pages:
   script:
   - pip install -r requirements.txt
-  - pelican -s publishconf.py
+  - pelican -s site/publishconf.py
   artifacts:
     paths:
     - site/output/
