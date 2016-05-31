@@ -4,6 +4,7 @@ pages:
   script:
   - pip install -r requirements.txt
   - pelican -s site/pelicanconf.py
+  - mv site/output public
   artifacts:
     paths:
-    - site/output/
+    - public
