@@ -2,6 +2,7 @@ image: python:2.7-alpine
 
 pages:
   script:
+  - apt-get install git
   - git submodule init
   - git submodule update
   - pip install -r requirements.txt
