@@ -2,6 +2,8 @@ image: python:2.7-alpine
 
 pages:
   script:
+  - git submodule init
+  - git submodule update
   - pip install -r requirements.txt
   - pelican -s site/pelicanconf.py
   - mv site/output public
