@@ -1,9 +1,9 @@
 image: python:3.10-rc-alpine
 
 pages:
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
   script:
-  - apk add --nocache git
-  - git submodule update --init
   - pip install -r requirements.txt
   - pelican -s site/pelicanconf.py
   - mv site/output public
