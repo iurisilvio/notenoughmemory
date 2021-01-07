@@ -1,4 +1,4 @@
-image: python:3-wheezy
+image: python:3.10-rc-alpine
 
 pages:
   script:
