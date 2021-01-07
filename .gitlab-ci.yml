@@ -1,4 +1,4 @@
-image: python:2.7-wheezy
+image: python:3-wheezy
 
 pages:
   script:
