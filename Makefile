@@ -1,8 +1,6 @@
 PELICAN=pelican
 PELICANOPTS=
 
-GHP_IMPORT=ghp-import
-
 BASEDIR=$(PWD)/site
 INPUTDIR=$(BASEDIR)/source
 OUTPUTDIR=$(BASEDIR)/output
@@ -14,7 +12,6 @@ help:
 	@echo 'Usage:                                                                 '
 	@echo '   make html                        (re)generate the web site          '
 	@echo '   make clean                       remove the generated files         '
-	@echo '   make publish                     publish to gh-pages                '
 	@echo '                                                                       '
 
 
@@ -33,7 +30,4 @@ regenerate: clean
 serve:
 	cd $(OUTPUTDIR) && python -m http.server
 
-publish: html
-	$(GHP_IMPORT) -p -m "Publish to gh-pages." $(OUTPUTDIR)
-
-.PHONY: html help clean regenerate serve publish
+.PHONY: html help clean regenerate serve
