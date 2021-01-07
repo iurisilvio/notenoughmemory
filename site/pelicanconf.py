@@ -4,8 +4,8 @@
 # Basic settings
 
 AUTHOR = u"Iuri de Silvio"
-SITENAME = u"Not Enough Memory"
-SITEURL = "http://notenoughmemory.com"
+SITENAME = u"iurisilvio"
+SITEURL = "https://iurisilv.io"
 RELATIVE_URLS = True
 
 PATH = "source"

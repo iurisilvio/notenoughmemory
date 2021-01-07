@@ -31,7 +31,7 @@ regenerate: clean
 	$(PELICAN) -r $(INPUTDIR) -o $(OUTPUTDIR) -s $(CONFFILE) $(PELICANOPTS)
 
 serve:
-	cd $(OUTPUTDIR) && python -m SimpleHTTPServer
+	cd $(OUTPUTDIR) && python -m http.server
 
 publish: html
 	$(GHP_IMPORT) -p -m "Publish to gh-pages." $(OUTPUTDIR)
