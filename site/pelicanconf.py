@@ -70,15 +70,19 @@ GOOGLE_ANALYTICS = "UA-33399692-1"
 TWITTER_USERNAME = "iurisilvio"
 
 # Blogroll
-LINKS = (("FunBlocker", "https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"),
-         ("bottle-sqlalchemy", "https://github.com/iurisilvio/bottle-sqlalchemy"))
+LINKS = (
+    ("ceps.io", "https://ceps.io"),
+    ("postmon", "https://www.postmon.com.br"),
+    ("Django contributor", "https://code.djangoproject.com/query?owner=iurisilvio&or&reporter=iurisilvio&col=id&col=summary&col=owner&col=status&col=reporter&col=type&order=priority"),
+    ("bottle-sqlalchemy", "https://github.com/iurisilvio/bottle-sqlalchemy"),
+  )
 
 # Social widget
-SOCIAL = (("Twitter", "https://twitter.com/iurisilvio"),
-          ("GitHub", "https://github.com/iurisilvio"),
-          ("LinkedIn", "http://br.linkedin.com/in/iurisilvio"),
-          ("Facebook", "https://www.facebook.com/iurisilvio"),
-          ("Google+", "https://plus.google.com/111773075021477618488"),)
+SOCIAL = (
+    ("Twitter", "https://twitter.com/iurisilvio"),
+    ("GitHub", "https://github.com/iurisilvio"),
+    ("LinkedIn", "http://br.linkedin.com/in/iurisilvio"),
+)
 
 STATIC_PATHS = [
     "images",
