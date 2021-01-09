@@ -17,7 +17,7 @@ Fortunately, Facebook improved their ways to avoid these posts with built-in fea
 
 Check the Google Analytics events below, counting basically posts removed.
 
-.. image:: |filename|images/funblocker-post-mortem/funblocker-analytics.png
+.. image:: |static|images/funblocker-post-mortem/funblocker-analytics.png
     :alt: Funblocker analytics
     :align: center
 

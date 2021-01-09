@@ -7,7 +7,7 @@ Chrome will break extensions backward compatibility
 
 If you develop a Chrome Extension, you should know that. Some days ago, I received a scary red warning during development of `FunBlocker <https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom>`_ Chrome Extension.
 
-.. image:: |filename|images/chrome-will-break-extensions-backward-compatibility/manifest-warning.png
+.. image:: |static|images/chrome-will-break-extensions-backward-compatibility/manifest-warning.png
     :alt: Chrome manifest warning
     :width: 550px
 

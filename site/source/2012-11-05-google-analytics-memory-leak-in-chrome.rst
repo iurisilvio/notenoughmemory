@@ -17,6 +17,6 @@ I'll report this issue to Chromium project and I'll try to profile this tab with
 
 Take a look at my Google Chrome Task Manager:
 
-.. image:: |filename|images/google-analytics-memory-leak-in-chrome/task-manager.png
+.. image:: |static|images/google-analytics-memory-leak-in-chrome/task-manager.png
     :alt: Chrome/Google Analytics memory leak
     :width: 400px

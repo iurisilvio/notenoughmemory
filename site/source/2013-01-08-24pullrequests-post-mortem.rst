@@ -22,24 +22,24 @@ Ok, these numbers say nothing about 24pullrequests impact. Maybe people just did
 
 I'm sure it is not the best comparison, but I compared these data with november data. In november, all these registered developers opened **1558 pull requests** to **837 projects**. Each month had around **66%** of pull requests merged, almost the same merge rate.
 
-.. image:: |filename|images/24pullrequests-post-mortem/stats.png
+.. image:: |static|images/24pullrequests-post-mortem/stats.png
     :alt: stats by month
     :align: center
 
-.. image:: |filename|images/24pullrequests-post-mortem/pull-requests-per-day.png
+.. image:: |static|images/24pullrequests-post-mortem/pull-requests-per-day.png
     :alt: pull requests per day
     :align: center
 
 Some projects had a lot of engagement, but the first project was the **24pullrequests**, with **88 pull requests**.
 
-.. image:: |filename|images/24pullrequests-post-mortem/pull-requests-per-project.png
+.. image:: |static|images/24pullrequests-post-mortem/pull-requests-per-project.png
     :alt: Pull requests per project
     :align: center
 
 
 To write these post, I calculated a lot of stats and did some graphics, but the most surprisingly numbers to me were these last one. 4 of the **10 developers** with most pull requests did not created a pull request in november and only one did more than **10 pull requests**. I double checked these data because I did not know I had zero pull request in november.
 
-.. image:: |filename|images/24pullrequests-post-mortem/pull-requests-per-developer.png
+.. image:: |static|images/24pullrequests-post-mortem/pull-requests-per-developer.png
     :alt: Pull requests per developer
     :align: center
 
