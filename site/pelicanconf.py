@@ -34,11 +34,11 @@ FEED_DOMAIN = SITEURL
 FEED_ATOM = "feed/atom.xml"
 FEED_RSS = "feed/rss.xml"
 
-CATEGORY_FEED_ATOM = "feed/category/%s." + FEED_ATOM
-CATEGORY_FEED_RSS = "feed/category/%s." + FEED_RSS
+CATEGORY_FEED_ATOM = "feed/category/{slug}." + FEED_ATOM
+CATEGORY_FEED_RSS = "feed/category/{slug}." + FEED_RSS
 
-TAG_FEED_ATOM = "feed/tag/%s." + FEED_ATOM
-TAG_FEED_RSS = "feed/tag/%s." + FEED_RSS
+TAG_FEED_ATOM = "feed/tag/{slug}." + FEED_ATOM
+TAG_FEED_RSS = "feed/tag/{slug}." + FEED_RSS
 
 # FeedBurner
 
@@ -51,7 +51,7 @@ DEFAULT_PAGINATION = 10
 # Translations
 
 DEFAULT_LANG = "en"
-TRANSLATION_FEED_ATOM = "feed/translation/%s.atom.xml"
+TRANSLATION_FEED_ATOM = "feed/translation/{lang}.atom.xml"
 
 # Ordering content
 
