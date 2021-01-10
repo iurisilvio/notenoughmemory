@@ -7,7 +7,7 @@ Honeycomb Django tricks
 
 `Honeycomb <https://www.honeycomb.io/>`_ is the observability tool we use everyday at `Buser <https://www.buser.com.br/>`_. They help us tracking application bottlenecks, slow database queries, slow requests, requests with too many queries and much more.
 
-Their automatic instrumentation with `beeline lib <https://docs.honeycomb.io/getting-data-in/python/beeline/>`_ is a good start, but at some point we had to extend the default behaviour.
+Their automatic instrumentation with `beeline <https://docs.honeycomb.io/getting-data-in/python/beeline/>`_ is a good start, but at some point we had to extend the default behaviour.
 
 Custom request data
 ===================
@@ -168,7 +168,7 @@ uWSGI integration
 
 `uWSGI integrations <https://docs.honeycomb.io/getting-data-in/python/beeline/#uwsgi>`_ was probably our first small issue.
 
-Package `uwsgidecorators` is available only inside uwsgi context and we wanted to run in development too. The `_init_beeline` in the code is the docs `init_beeline`. When it's not in uwsgi context, it setup beeline too.
+Package ``uwsgidecorators`` is available only inside uwsgi context and we wanted to run in development too. The ``_init_beeline`` in the code is the docs ``init_beeline``. When it's not in uwsgi context, it setup beeline too.
 
 .. code-block:: python
 
