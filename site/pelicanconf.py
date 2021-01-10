@@ -7,7 +7,7 @@ from decouple import config
 AUTHOR = u"Iuri de Silvio"
 SITENAME = u"iurisilvio"
 SITEURL = "https://iurisilv.io"
-RELATIVE_URLS = config('RELATIVE_URLS', type=bool, default=True)
+RELATIVE_URLS = config('RELATIVE_URLS', cast=bool, default=True)
 
 PATH = "source"
 OUTPUT_PATH = "output/"
