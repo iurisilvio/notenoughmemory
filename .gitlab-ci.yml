@@ -3,6 +3,7 @@ image: python:3.10-rc-alpine
 pages:
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
+    RELATIVE_URLS: false
   script:
   - pip install -r requirements.txt
   - pelican -s site/pelicanconf.py
