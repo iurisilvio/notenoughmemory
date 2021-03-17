@@ -63,18 +63,13 @@ Works great, but Django could do better handling these migrations.
 
 
 After that, I checked Django tickets and didn't found anything related. Created
-a ticket and implemented two pull requests to fix both steps
-`1 <https://code.djangoproject.com/ticket/31825>`_
-`2 <https://code.djangoproject.com/ticket/31826>`_.
-They were merged and released with Django 3.1.1 after long PR conversations.
+a ticket and implemented two pull requests to fix both steps: `AlterField with db_column addition should be a noop <https://code.djangoproject.com/ticket/31825>`_ and `RenameField with db_column should be a noop <https://code.djangoproject.com/ticket/31826>`_. They were merged and released with Django 3.1.1 after long PR conversations.
 
 Django is a huge codebase and even a minor change like that took me some days,
 changing the wrong things in the different wrong ways. I learned a lot and was
-able to fix another `migrations ticket <https://code.djangoproject.com/ticket/31831>`_.
+able to fix another migrations issue: `AlterOrderWithRespectTo() with ForeignKey crash when _order is included in Index() <https://code.djangoproject.com/ticket/31831>`_.
 
-Right after these fixes, I upgraded our Django and hit a `recent regression <https://code.djangoproject.com/ticket/31870>`_. It was a quick fix, but lots of
-tests written.
+Right after these fixes, I upgraded our Django and hit a recent regression:
+`App with default_app_config and without apps.py or with an empty apps.py crashes. <https://code.djangoproject.com/ticket/31870>`_. It was a quick fix, but lots of tests written.
 
-When our new intern started, he had an issue with queryset `in_bulk` operation,
-because of incomplete docs and it was a `simple commit <https://code.djangoproject.com/ticket/32313>`_
-to improve their docs.
+When our new intern started exploring Django querysets, he had an issue with queryset `in_bulk` operation, because of incomplete docs and it generated a new ticket and quick fix: `Queryset in_bulk docs don't explicit field_name as kwarg only <https://code.djangoproject.com/ticket/32313>`_.
