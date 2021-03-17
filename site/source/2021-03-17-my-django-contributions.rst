@@ -63,7 +63,7 @@ Works great, but Django could do better handling these migrations.
 
 
 After that, I checked Django tickets and didn't found anything related. Created
-a ticket and implemented two pull requests to fix both steps: `AlterField with db_column addition should be a noop <https://code.djangoproject.com/ticket/31825>`_ and `RenameField with db_column should be a noop <https://code.djangoproject.com/ticket/31826>`_. They were merged and released with Django 3.1.1 after long PR conversations.
+a ticket and implemented two pull requests to fix both steps: `AlterField with db_column addition should be a noop <https://code.djangoproject.com/ticket/31826>`_ and `RenameField with db_column should be a noop <https://code.djangoproject.com/ticket/31825>`_. They were merged and released with Django 3.1.1 after long PR conversations.
 
 Django is a huge codebase and even a minor change like that took me some days,
 changing the wrong things in the different wrong ways. I learned a lot and was
