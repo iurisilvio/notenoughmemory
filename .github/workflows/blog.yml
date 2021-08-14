@@ -34,7 +34,3 @@ jobs:
       with:
         branch: gh-pages
         folder: site/output
-      on:
-        push:
-          branches:
-            - main
