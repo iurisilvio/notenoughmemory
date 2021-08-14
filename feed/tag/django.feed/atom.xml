@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>iurisilvio - django</title><link href="https://iurisilv.io/" rel="alternate"></link><link href="https://iurisilv.io/feed/tag/django.feed/atom.xml" rel="self"></link><id>https://iurisilv.io/</id><updated>2021-04-28T00:00:00-03:00</updated><entry><title>Django Sessions to cache</title><link href="https://iurisilv.io/2021/04/django-sessions-to-cache.html" rel="alternate"></link><published>2021-04-28T00:00:00-03:00</published><updated>2021-04-28T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-04-28:/2021/04/django-sessions-to-cache.html</id><summary type="html">&lt;p&gt;Django sessions works great since the begining, you can do a site with them and
+never really understand how sessions works, but you can't scale to thousands of
+simultaneous users writing all your sessions to database. The database can be a
+huge bottleneck here and you should remove all unnecessary …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Django sessions works great since the begining, you can do a site with them and
+never really understand how sessions works, but you can't scale to thousands of
+simultaneous users writing all your sessions to database. The database can be a
+huge bottleneck here and you should remove all unnecessary reading and writing.&lt;/p&gt;
+&lt;p&gt;Fortunately, Django has good alternatives almost built-in. They provide other
+session backends, like &lt;code&gt;cached_db&lt;/code&gt; and &lt;code&gt;cache&lt;/code&gt;. It has &lt;a href="https://docs.djangoproject.com/en/3.2/topics/http/sessions/"&gt;extensive docs&lt;/a&gt;, but I had some issues migrating to cache backend.&lt;/p&gt;
+&lt;p&gt;Doing that in production means current sessions can't be removed during migration.&lt;/p&gt;
+&lt;p&gt;I decided for the easy path:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='django.contrib.sessions.backends.cached_db'&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Wait some days to have all useful sessions cached. More than &lt;code&gt;SESSION_COOKIE_AGE&lt;/code&gt; was
+enough to me.&lt;/li&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='django.contrib.sessions.backends.cache'&lt;/code&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;It doesn't work.&lt;/p&gt;
+&lt;p&gt;Both session engines define keys as &lt;code&gt;key_prefix + session_id&lt;/code&gt;, with different
+prefixes. &lt;a href="https://github.com/django/django/blob/ca9872905559026af82000e46cde6f7dedc897b6/docs/topics/http/sessions.txt#L827-L834"&gt;Django do that to avoid namespace clash&lt;/a&gt;.
+It is a sane default, but I want namespace clash to simplify the migration path.&lt;/p&gt;
+&lt;p&gt;I can define custom session backends with the key prefixes I want. Each one
+should be a file because &lt;code&gt;SESSION_ENGINE&lt;/code&gt; must be a module with a &lt;code&gt;SessionStore&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# base.py&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;BaseSessionStoreMixin&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;cache_key_prefix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;busersessionstore&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# cache.py&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.contrib.sessions.backends&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;cache&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;.&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;base&lt;/span&gt;
+
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;base&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;BaseSessionStoreMixin&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cache&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;pass&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# cached_db.py&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.contrib.sessions.backends&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;cached_db&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;.&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;base&lt;/span&gt;
+
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;base&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;BaseSessionStoreMixin&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cached_db&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;pass&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Now I can do the same thing, using my session engines.&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='myproject.sessions.cached_db'&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Wait some days to have all useful sessions cached. More than &lt;code&gt;SESSION_COOKIE_AGE&lt;/code&gt; was
+enough to me.&lt;/li&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='myproject.sessions.cache'&lt;/code&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;It works!&lt;/p&gt;
+&lt;p&gt;Just as disclaimer, memcached don't have a good way to make this data durable.
+If memcached node restart, all data is lost. We're using redis with replicas,
+so I lose all data only if all nodes explode at the same time.&lt;/p&gt;</content><category term="programming"></category><category term="python"></category><category term="django"></category></entry><entry><title>My Django contributions</title><link href="https://iurisilv.io/2021/03/my-django-contributions.html" rel="alternate"></link><published>2021-03-17T00:00:00-03:00</published><updated>2021-03-17T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-03-17:/2021/03/my-django-contributions.html</id><summary type="html">&lt;p&gt;I started contributing to Django core after a failure in our project.&lt;/p&gt;
+&lt;p&gt;I had to rename a model attribute without touching our database. The solution
+was simple.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# Simple attribute to rename.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 1. Add db_column param.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db_column&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 2. Change the attribute name …&lt;/span&gt;&lt;/pre&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;I started contributing to Django core after a failure in our project.&lt;/p&gt;
+&lt;p&gt;I had to rename a model attribute without touching our database. The solution
+was simple.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# Simple attribute to rename.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 1. Add db_column param.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db_column&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 2. Change the attribute name.&lt;/span&gt;
+&lt;span class="n"&gt;creator&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db_column&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;It was really obvious to me that it should be a noop to database. Even Stack Overflow
+&lt;a class="reference external" href="https://stackoverflow.com/a/33191630/617395"&gt;had a response confirming that&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;The first migration locked our database because it dropped and recreated a constraint.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;SET&lt;/span&gt; &lt;span class="k"&gt;CONSTRAINTS&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt; &lt;span class="k"&gt;IMMEDIATE&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt; &lt;span class="k"&gt;DROP&lt;/span&gt; &lt;span class="k"&gt;CONSTRAINT&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt; &lt;span class="k"&gt;ADD&lt;/span&gt; &lt;span class="k"&gt;CONSTRAINT&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;
+    &lt;span class="k"&gt;FOREIGN&lt;/span&gt; &lt;span class="k"&gt;KEY&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;REFERENCES&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_author&amp;quot;&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;DEFERRABLE&lt;/span&gt; &lt;span class="k"&gt;INITIALLY&lt;/span&gt; &lt;span class="k"&gt;DEFERRED&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Sad day, but right after that I prepared to run the second step. That time I
+checked the generated SQL with &lt;tt class="docutils literal"&gt;sqlmigrate&lt;/tt&gt; command and discovered it will
+do the same thing again.&lt;/p&gt;
+&lt;p&gt;To avoid another failure, I did only a &lt;tt class="docutils literal"&gt;SeparateDatabaseAndState&lt;/tt&gt; change.
+Works great, but Django could do better handling these migrations.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.db&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Migration&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Migration&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;atomic&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;False&lt;/span&gt;
+    &lt;span class="n"&gt;dependencies&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;core&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;0137_auto_20200227_1304&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+    &lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;operations&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
+        &lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;SeparateDatabaseAndState&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+            &lt;span class="n"&gt;state_operations&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;
+                &lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;RenameField&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+                    &lt;span class="n"&gt;model_name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;book&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;old_name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;new_name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;creator&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                &lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="p"&gt;],&lt;/span&gt;
+            &lt;span class="n"&gt;database_operations&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[],&lt;/span&gt;
+        &lt;span class="p"&gt;),&lt;/span&gt;
+    &lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;After that, I checked Django tickets and didn't found anything related. Created
+a ticket and implemented two pull requests to fix both steps: &lt;a class="reference external" href="https://code.djangoproject.com/ticket/31826"&gt;AlterField with db_column addition should be a noop&lt;/a&gt; and &lt;a class="reference external" href="https://code.djangoproject.com/ticket/31825"&gt;RenameField with db_column should be a noop&lt;/a&gt;. They were merged and released with Django 3.1.1 after long PR conversations.&lt;/p&gt;
+&lt;p&gt;Django is a huge codebase and even a minor change like that took me some days,
+changing the wrong things in the different wrong ways. I learned a lot and was
+able to fix another migrations issue: &lt;a class="reference external" href="https://code.djangoproject.com/ticket/31831"&gt;AlterOrderWithRespectTo() with ForeignKey crash when _order is included in Index()&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Right after these fixes, I upgraded our Django and hit a recent regression:
+&lt;a class="reference external" href="https://code.djangoproject.com/ticket/31870"&gt;App with default_app_config and without apps.py or with an empty apps.py crashes.&lt;/a&gt;. It was a quick fix, but lots of tests written.&lt;/p&gt;
+&lt;p&gt;When our new intern started exploring Django querysets, he had an issue with queryset &lt;cite&gt;in_bulk&lt;/cite&gt; operation, because of incomplete docs and it generated a new ticket and quick fix: &lt;a class="reference external" href="https://code.djangoproject.com/ticket/32313"&gt;Queryset in_bulk docs don't explicit field_name as kwarg only&lt;/a&gt;.&lt;/p&gt;
+</content><category term="programming"></category><category term="python"></category><category term="django"></category></entry><entry><title>Faster parallel pytest-django</title><link href="https://iurisilv.io/2021/03/faster-parallel-pytest-django.html" rel="alternate"></link><published>2021-03-08T08:00:00-03:00</published><updated>2021-03-08T08:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-03-08:/2021/03/faster-parallel-pytest-django.html</id><summary type="html">&lt;p&gt;We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.&lt;/p&gt;
+&lt;p&gt;Unfortunately our CI/CD was really slow after this change.&lt;/p&gt;
+&lt;p&gt;I discovered parallel &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; do their setup different than Django
+unittests. Django create a template database and copy …&lt;/p&gt;</summary><content type="html">&lt;p&gt;We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.&lt;/p&gt;
+&lt;p&gt;Unfortunately our CI/CD was really slow after this change.&lt;/p&gt;
+&lt;p&gt;I discovered parallel &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; do their setup different than Django
+unittests. Django create a template database and copy it to every test node,
+&lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; create one database per node. Running this setup with migrations
+took more than 2 minutes just to have the database created.&lt;/p&gt;
+&lt;p&gt;This is a problem mostly for CI/CD, because local you can run with &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;--reuse-db&lt;/span&gt;&lt;/tt&gt;
+and the overhead is minimal, only when you have database migrations.&lt;/p&gt;
+&lt;p&gt;I wanted to fix this in &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt;, but I discovered it is difficult because
+pytest-xdist don't have a global setup and teardown.&lt;/p&gt;
+&lt;p&gt;Now I have a small hack, working great so far. This is the script running our
+tests:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;./manage.py shell -c &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+&lt;span class="s2"&gt;from django.test.utils import setup_databases&lt;/span&gt;
+&lt;span class="s2"&gt;from xdist.plugin import pytest_xdist_auto_num_workers&lt;/span&gt;
+&lt;span class="s2"&gt;setup_databases(verbosity=True, interactive=False, parallel=pytest_xdist_auto_num_workers())&lt;/span&gt;
+&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+pytest --reuse-db -n auto
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Django unittests generate names like &lt;tt class="docutils literal"&gt;test_yourdb_1&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_2&lt;/tt&gt; and
+&lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; generate names like &lt;tt class="docutils literal"&gt;test_yourdb_gw0&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_gw1&lt;/tt&gt;, their
+names don't match, I had to make a fixture to monkey patch their behaviors.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;pytest_django.fixtures&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;_set_suffix_to_test_databases&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;pytest_django.lazy_django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;skip_if_no_django&lt;/span&gt;
+
+&lt;span class="c1"&gt;# Original code: https://github.com/pytest-dev/pytest-django/blob/bd2ae62968aaf97c6efc7e02ff77ba6160865435/pytest_django/fixtures.py#L46&lt;/span&gt;
+&lt;span class="nd"&gt;@pytest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fixture&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;scope&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;session&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;django_db_modify_db_settings_xdist_suffix&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;skip_if_no_django&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="n"&gt;xdist_suffix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;getattr&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;workerinput&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;{})&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;workerid&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;xdist_suffix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# &amp;#39;gw0&amp;#39; -&amp;gt; &amp;#39;1&amp;#39;, &amp;#39;gw1&amp;#39; -&amp;gt; &amp;#39;2&amp;#39;, ...&lt;/span&gt;
+        &lt;span class="n"&gt;suffix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;int&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;xdist_suffix&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;gw&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;_set_suffix_to_test_databases&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;suffix&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;suffix&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;I tried to make a pull request to &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt;, but this issue exists
+because pytest-xdist don't have hooks to run before and after every node.&lt;/p&gt;
+</content><category term="programming"></category><category term="python"></category><category term="django"></category><category term="pytest"></category></entry><entry><title>Honeycomb Django tricks</title><link href="https://iurisilv.io/2021/01/honeycomb-django-tricks.html" rel="alternate"></link><published>2021-01-10T08:00:00-03:00</published><updated>2021-01-10T08:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-01-10:/2021/01/honeycomb-django-tricks.html</id><summary type="html">&lt;p&gt;&lt;a class="reference external" href="https://www.honeycomb.io/"&gt;Honeycomb&lt;/a&gt; is the observability tool we use everyday at &lt;a class="reference external" href="https://www.buser.com.br/"&gt;Buser&lt;/a&gt;. They help us tracking application bottlenecks, slow database queries, slow requests, requests with too many queries and much more.&lt;/p&gt;
+&lt;p&gt;Their automatic instrumentation with &lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/"&gt;beeline&lt;/a&gt; is a good start, but at some point we had to extend the default behaviour.&lt;/p&gt;
+&lt;div class="section" id="custom-request-data"&gt;
+&lt;h2&gt;Custom …&lt;/h2&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;&lt;a class="reference external" href="https://www.honeycomb.io/"&gt;Honeycomb&lt;/a&gt; is the observability tool we use everyday at &lt;a class="reference external" href="https://www.buser.com.br/"&gt;Buser&lt;/a&gt;. They help us tracking application bottlenecks, slow database queries, slow requests, requests with too many queries and much more.&lt;/p&gt;
+&lt;p&gt;Their automatic instrumentation with &lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/"&gt;beeline&lt;/a&gt; is a good start, but at some point we had to extend the default behaviour.&lt;/p&gt;
+&lt;div class="section" id="custom-request-data"&gt;
+&lt;h2&gt;Custom request data&lt;/h2&gt;
+&lt;p&gt;We extended the &lt;tt class="docutils literal"&gt;HoneyMiddleware&lt;/tt&gt; and changed &lt;tt class="docutils literal"&gt;settings.py MIDDLEWARE&lt;/tt&gt; to use our custom middleware because we wanted to track differences between logged and anonymous users.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;beeline.middleware.django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;HoneycombMiddleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_context_from_request&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;context&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_context_from_request&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;is_authenticated&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;request.user.id&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;id&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;We could add &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;context['request.user.is_authenticated']&lt;/span&gt;&lt;/tt&gt; too, but we did that with a derived column &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;EXISTS($&amp;quot;request.user.id&amp;quot;)&lt;/span&gt;&lt;/tt&gt; in Honeycomb side.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="trace-sampling"&gt;
+&lt;h2&gt;Trace sampling&lt;/h2&gt;
+&lt;p&gt;Honeycomb limits are really friendly, &lt;strong&gt;even for their free plan&lt;/strong&gt;, but our traffic increased 5x in 2020 and we reached our plan limits.&lt;/p&gt;
+&lt;p&gt;Their &lt;tt class="docutils literal"&gt;beeline&lt;/tt&gt; client has a &lt;tt class="docutils literal"&gt;sample_rate&lt;/tt&gt; config but it's a dummy implementation, generating imcomplete traces, which is useless to us.&lt;/p&gt;
+&lt;p&gt;We make the sampling decision at the start of the request, unfortunately it's not possible to decide based on request duration or request status.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;beeline.middleware.django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;HoneycombMiddleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__call__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;sample_rate&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_sample_rate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;sampled&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+        &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sampled&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__call__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_sample_rate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="c1"&gt;# Add logic here to decide based on path or other request info.&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Now, to sample based on this &lt;tt class="docutils literal"&gt;__honeycomb_sampled__&lt;/tt&gt; info, beeline need a sampler hook.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;beeline&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;event&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="c1"&gt;# The get_request is not Django built-in.&lt;/span&gt;
+    &lt;span class="c1"&gt;# Check django-middleware-global-request project.&lt;/span&gt;
+    &lt;span class="n"&gt;request&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;get_request&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# Ignore when we don&amp;#39;t have a request.&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="ow"&gt;not&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="kc"&gt;False&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt;
+
+
+&lt;span class="n"&gt;beeline&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;init&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="request-based-sampling"&gt;
+&lt;h2&gt;Request based sampling&lt;/h2&gt;
+&lt;p&gt;Instead of a fixed sample rate, we have it configured by path and by domain to get better results. Our implementation use Django settings,
+but it is easy to start handling just special cases.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_sample_rate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_host&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;admin.example.com&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# Always trace admin domain, it has low volume but lots of slow batch requests.&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;path&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/search&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# Reduce high volume path sampling.&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="celery"&gt;
+&lt;h2&gt;Celery&lt;/h2&gt;
+&lt;p&gt;Our project ran only with Django integration for almost a year, focused on critical requests optimizations. We had to offload lots of application work to Celery to handle some bottlenecks, but after that we created a huge blindspot in the stack.&lt;/p&gt;
+&lt;div class="section" id="celery-instrumentation"&gt;
+&lt;h3&gt;Celery instrumentation&lt;/h3&gt;
+&lt;p&gt;Again, beeline has a nice &lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/#celery"&gt;Celery base implementation&lt;/a&gt;, but it doesn't handle sampling well and don't
+instrument Django database queries.&lt;/p&gt;
+&lt;p&gt;Maybe it's a small bug, based on our use, Celery queue name is in &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;delivery_info['routing_key']&lt;/span&gt;&lt;/tt&gt; instead of &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;delivery_info['exchange']&lt;/span&gt;&lt;/tt&gt;. We decided to log
+both values to not lose useful data.&lt;/p&gt;
+&lt;p&gt;I reused ideas from their &lt;a class="reference external" href="https://github.com/honeycombio/beeline-python/blob/2ab8dea5d195096755199ac9badfe671f408bb9d/beeline/middleware/django/__init__.py#L155-L159"&gt;middleware&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;contextlib&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;ExitStack&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;beeline.middleware.django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;HoneyDBWrapper&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery.signals&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;task_prerun&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;task_postrun&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.db&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;connections&lt;/span&gt;
+
+&lt;span class="nd"&gt;@task_prerun&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;setup_django_db&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;_exit_stack&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;ExitStack&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="n"&gt;db_wrapper&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;HoneyDBWrapper&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;connection&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;connections&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;all&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+        &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;_exit_stack&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;enter_context&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;connection&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;execute_wrapper&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;db_wrapper&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+&lt;span class="nd"&gt;@task_postrun&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;teardown_django_db&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;_exit_stack&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;close&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="celery-sampling"&gt;
+&lt;h3&gt;Celery sampling&lt;/h3&gt;
+&lt;p&gt;Celery sampling was a challenge, because Celery internals don't have good documentation.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;random&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;celery&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery.signals&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;task_prerun&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;event&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;celery&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;current_app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;current_worker_task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;sampling&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sample_rate&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;sampled&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;sampled&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+
+&lt;span class="nd"&gt;@task_prerun&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;setup_sampling&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sampling&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The &lt;tt class="docutils literal"&gt;beeline.init&lt;/tt&gt; now need a &lt;tt class="docutils literal"&gt;sampler_hook&lt;/tt&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;beeline&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery.signals&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;worker_process_init&lt;/span&gt;
+
+&lt;span class="nd"&gt;@worker_process_init&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;initialize_honeycomb&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="n"&gt;kwargs&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;beeline&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;init&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="uwsgi-integration"&gt;
+&lt;h2&gt;uWSGI integration&lt;/h2&gt;
+&lt;p&gt;&lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/#uwsgi"&gt;uWSGI integrations&lt;/a&gt; was probably our first small issue.&lt;/p&gt;
+&lt;p&gt;Package &lt;tt class="docutils literal"&gt;uwsgidecorators&lt;/tt&gt; is available only inside uwsgi context and we wanted to run in development too. The &lt;tt class="docutils literal"&gt;_init_beeline&lt;/tt&gt; in the code is the docs &lt;tt class="docutils literal"&gt;init_beeline&lt;/tt&gt;. When it's not in uwsgi context, it setup beeline too.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;init_beeline&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;try&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;uwsgidecorators&lt;/span&gt;
+    &lt;span class="k"&gt;except&lt;/span&gt; &lt;span class="ne"&gt;ImportError&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;_init_beeline&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="k"&gt;else&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;uwsgidecorators&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;postfork&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;_init_beeline&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+</content><category term="programming"></category><category term="python"></category><category term="django"></category><category term="honeycomb"></category></entry></feed>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="generator" content="Pelican" />
+        <title>iurisilvio - honeycomb</title>
+        <link rel="stylesheet" href="../theme/css/main.css" />
+        <link href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="iurisilvio Atom Feed" />
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="../">iurisilvio</a></h1>
+                <nav><ul>
+                    <li><a href="../category/devops.html">devops</a></li>
+                    <li><a href="../category/issue.html">issue</a></li>
+                    <li><a href="../category/misc.html">misc</a></li>
+                    <li><a href="../category/programming.html">programming</a></li>
+                    <li><a href="../category/stats.html">stats</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="../2021/01/honeycomb-django-tricks.html">Honeycomb Django tricks</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2021-01-10T08:00:00-03:00">
+                Published: Sun 10 January 2021
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> <a href="../tag/honeycomb.html">honeycomb</a> </p>
+</footer><!-- /.post-info --><p><a class="reference external" href="https://www.honeycomb.io/">Honeycomb</a> is the observability tool we use everyday at <a class="reference external" href="https://www.buser.com.br/">Buser</a>. They help us tracking application bottlenecks, slow database queries, slow requests, requests with too many queries and much more.</p>
+<p>Their automatic instrumentation with <a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/">beeline</a> is a good start, but at some point we had to extend the default behaviour.</p>
+<div class="section" id="custom-request-data">
+<h2>Custom request data</h2>
+<p>We extended the <tt class="docutils literal">HoneyMiddleware</tt> and changed <tt class="docutils literal">settings.py MIDDLEWARE</tt> to use our custom middleware because we wanted to track differences between logged and anonymous users.</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">beeline.middleware.django</span> <span class="kn">import</span> <span class="n">HoneyMiddleware</span>
+
+<span class="k">class</span> <span class="nc">HoneycombMiddleware</span><span class="p">(</span><span class="n">HoneyMiddleware</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">get_context_from_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_context_from_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">is_authenticated</span><span class="p">:</span>
+            <span class="n">context</span><span class="p">[</span><span class="s1">&#39;request.user.id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">user</span><span class="o">.</span><span class="n">id</span>
+        <span class="k">return</span> <span class="n">context</span>
+</pre></div>
+<p>We could add <tt class="docutils literal"><span class="pre">context['request.user.is_authenticated']</span></tt> too, but we did that with a derived column <tt class="docutils literal"><span class="pre">EXISTS($&quot;request.user.id&quot;)</span></tt> in Honeycomb side.</p>
+</div>
+<div class="section" id="trace-sampling">
+<h2>Trace sampling</h2>
+<p>Honeycomb limits are really friendly, <strong>even for their free plan</strong>, but our traffic increased 5x in 2020 and we reached our plan limits.</p>
+<p>Their <tt class="docutils literal">beeline</tt> client has a <tt class="docutils literal">sample_rate</tt> config but it's a dummy implementation, generating imcomplete traces, which is useless to us.</p>
+<p>We make the sampling decision at the start of the request, unfortunately it's not possible to decide based on request duration or request status.</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">beeline.middleware.django</span> <span class="kn">import</span> <span class="n">HoneyMiddleware</span>
+
+<span class="k">class</span> <span class="nc">HoneycombMiddleware</span><span class="p">(</span><span class="n">HoneyMiddleware</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="n">sample_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample_rate</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">sampled</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">sample_rate</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">__honeycomb_sampled__</span> <span class="o">=</span> <span class="n">sampled</span><span class="p">,</span> <span class="n">sample_rate</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_sample_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="c1"># Add logic here to decide based on path or other request info.</span>
+        <span class="k">return</span> <span class="mi">10</span>
+</pre></div>
+<p>Now, to sample based on this <tt class="docutils literal">__honeycomb_sampled__</tt> info, beeline need a sampler hook.</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">beeline</span>
+
+<span class="k">def</span> <span class="nf">sampler_hook</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+    <span class="c1"># The get_request is not Django built-in.</span>
+    <span class="c1"># Check django-middleware-global-request project.</span>
+    <span class="n">request</span> <span class="o">=</span> <span class="n">get_request</span><span class="p">()</span>
+
+    <span class="c1"># Ignore when we don&#39;t have a request.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">request</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">__honeycomb_sampled__</span>
+
+
+<span class="n">beeline</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">sampler_hook</span><span class="o">=</span><span class="n">sampler_hook</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="request-based-sampling">
+<h2>Request based sampling</h2>
+<p>Instead of a fixed sample rate, we have it configured by path and by domain to get better results. Our implementation use Django settings,
+but it is easy to start handling just special cases.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_sample_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">get_host</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;admin.example.com&#39;</span><span class="p">:</span>
+        <span class="c1"># Always trace admin domain, it has low volume but lots of slow batch requests.</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="s1">&#39;/search&#39;</span><span class="p">:</span>
+        <span class="c1"># Reduce high volume path sampling.</span>
+        <span class="k">return</span> <span class="mi">80</span>
+
+    <span class="k">return</span> <span class="mi">10</span>
+</pre></div>
+</div>
+<div class="section" id="celery">
+<h2>Celery</h2>
+<p>Our project ran only with Django integration for almost a year, focused on critical requests optimizations. We had to offload lots of application work to Celery to handle some bottlenecks, but after that we created a huge blindspot in the stack.</p>
+<div class="section" id="celery-instrumentation">
+<h3>Celery instrumentation</h3>
+<p>Again, beeline has a nice <a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/#celery">Celery base implementation</a>, but it doesn't handle sampling well and don't
+instrument Django database queries.</p>
+<p>Maybe it's a small bug, based on our use, Celery queue name is in <tt class="docutils literal"><span class="pre">delivery_info['routing_key']</span></tt> instead of <tt class="docutils literal"><span class="pre">delivery_info['exchange']</span></tt>. We decided to log
+both values to not lose useful data.</p>
+<p>I reused ideas from their <a class="reference external" href="https://github.com/honeycombio/beeline-python/blob/2ab8dea5d195096755199ac9badfe671f408bb9d/beeline/middleware/django/__init__.py#L155-L159">middleware</a>.</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">ExitStack</span>
+
+<span class="kn">from</span> <span class="nn">beeline.middleware.django</span> <span class="kn">import</span> <span class="n">HoneyDBWrapper</span>
+<span class="kn">from</span> <span class="nn">celery.signals</span> <span class="kn">import</span> <span class="n">task_prerun</span><span class="p">,</span> <span class="n">task_postrun</span>
+<span class="kn">from</span> <span class="nn">django.db</span> <span class="kn">import</span> <span class="n">connections</span>
+
+<span class="nd">@task_prerun</span><span class="o">.</span><span class="n">connect</span>
+<span class="k">def</span> <span class="nf">setup_django_db</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+    <span class="n">task</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">_exit_stack</span> <span class="o">=</span> <span class="n">ExitStack</span><span class="p">()</span>
+    <span class="n">db_wrapper</span> <span class="o">=</span> <span class="n">HoneyDBWrapper</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">connection</span> <span class="ow">in</span> <span class="n">connections</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">_exit_stack</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="n">connection</span><span class="o">.</span><span class="n">execute_wrapper</span><span class="p">(</span><span class="n">db_wrapper</span><span class="p">))</span>
+
+<span class="nd">@task_postrun</span><span class="o">.</span><span class="n">connect</span>
+<span class="k">def</span> <span class="nf">teardown_django_db</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+    <span class="n">task</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">_exit_stack</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="section" id="celery-sampling">
+<h3>Celery sampling</h3>
+<p>Celery sampling was a challenge, because Celery internals don't have good documentation.</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">celery</span>
+
+<span class="kn">from</span> <span class="nn">celery.signals</span> <span class="kn">import</span> <span class="n">task_prerun</span>
+
+<span class="k">def</span> <span class="nf">sampler_hook</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">celery</span><span class="o">.</span><span class="n">current_app</span><span class="o">.</span><span class="n">current_worker_task</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">__honeycomb_sampled__</span>
+
+<span class="k">def</span> <span class="nf">sampling</span><span class="p">(</span><span class="n">sample_rate</span><span class="p">):</span>
+    <span class="n">sampled</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">sample_rate</span>
+    <span class="k">return</span> <span class="n">sampled</span><span class="p">,</span> <span class="n">sample_rate</span>
+
+<span class="nd">@task_prerun</span><span class="o">.</span><span class="n">connect</span>
+<span class="k">def</span> <span class="nf">setup_sampling</span><span class="p">(</span><span class="n">task</span><span class="p">):</span>
+    <span class="n">task</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">__honeycomb_sampled__</span> <span class="o">=</span> <span class="n">sampling</span><span class="p">()</span>
+</pre></div>
+<p>The <tt class="docutils literal">beeline.init</tt> now need a <tt class="docutils literal">sampler_hook</tt>.</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">beeline</span>
+<span class="kn">from</span> <span class="nn">celery.signals</span> <span class="kn">import</span> <span class="n">worker_process_init</span>
+
+<span class="nd">@worker_process_init</span><span class="o">.</span><span class="n">connect</span>
+<span class="k">def</span> <span class="nf">initialize_honeycomb</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">beeline</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">sampler_hook</span><span class="o">=</span><span class="n">sampler_hook</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="uwsgi-integration">
+<h2>uWSGI integration</h2>
+<p><a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/#uwsgi">uWSGI integrations</a> was probably our first small issue.</p>
+<p>Package <tt class="docutils literal">uwsgidecorators</tt> is available only inside uwsgi context and we wanted to run in development too. The <tt class="docutils literal">_init_beeline</tt> in the code is the docs <tt class="docutils literal">init_beeline</tt>. When it's not in uwsgi context, it setup beeline too.</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">init_beeline</span><span class="p">():</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">uwsgidecorators</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="n">_init_beeline</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">uwsgidecorators</span><span class="o">.</span><span class="n">postfork</span><span class="p">(</span><span class="n">_init_beeline</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There are <a href="../2021/01/honeycomb-django-tricks.html#disqus_thread">comments</a>.</p>                </article>
+            </aside><!-- /#featured -->
+        <section id="extras" class="body">
+                <div class="blogroll">
+                        <h2>links</h2>
+                        <ul>
+                            <li><a href="https://ceps.io">ceps.io</a></li>
+                            <li><a href="https://www.postmon.com.br">postmon</a></li>
+                            <li><a href="https://code.djangoproject.com/query?owner=iurisilvio&or&reporter=iurisilvio&col=id&col=summary&col=owner&col=status&col=reporter&col=type&order=priority">Django contributor</a></li>
+                            <li><a href="https://github.com/iurisilvio/bottle-sqlalchemy">bottle-sqlalchemy</a></li>
+                        </ul>
+                </div><!-- /.blogroll -->
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                            <li><a href="https://twitter.com/iurisilvio">Twitter</a></li>
+                            <li><a href="https://github.com/iurisilvio">GitHub</a></li>
+                            <li><a href="http://br.linkedin.com/in/iurisilvio">LinkedIn</a></li>
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a href="https://www.python.org/">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+    <script type="text/javascript">
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-33399692-1', 'auto');
+    ga('send', 'pageview');
+    </script>
+<script type="text/javascript">
+    var disqus_shortname = 'notenoughmemory';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+</body>
+</html>

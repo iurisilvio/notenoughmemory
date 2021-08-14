@@ -1,0 +1,743 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>iurisilvio</title><link href="https://iurisilv.io/" rel="alternate"></link><link href="https://iurisilv.io/feed/atom.xml" rel="self"></link><id>https://iurisilv.io/</id><updated>2021-04-28T00:00:00-03:00</updated><entry><title>Django Sessions to cache</title><link href="https://iurisilv.io/2021/04/django-sessions-to-cache.html" rel="alternate"></link><published>2021-04-28T00:00:00-03:00</published><updated>2021-04-28T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-04-28:/2021/04/django-sessions-to-cache.html</id><summary type="html">&lt;p&gt;Django sessions works great since the begining, you can do a site with them and
+never really understand how sessions works, but you can't scale to thousands of
+simultaneous users writing all your sessions to database. The database can be a
+huge bottleneck here and you should remove all unnecessary …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Django sessions works great since the begining, you can do a site with them and
+never really understand how sessions works, but you can't scale to thousands of
+simultaneous users writing all your sessions to database. The database can be a
+huge bottleneck here and you should remove all unnecessary reading and writing.&lt;/p&gt;
+&lt;p&gt;Fortunately, Django has good alternatives almost built-in. They provide other
+session backends, like &lt;code&gt;cached_db&lt;/code&gt; and &lt;code&gt;cache&lt;/code&gt;. It has &lt;a href="https://docs.djangoproject.com/en/3.2/topics/http/sessions/"&gt;extensive docs&lt;/a&gt;, but I had some issues migrating to cache backend.&lt;/p&gt;
+&lt;p&gt;Doing that in production means current sessions can't be removed during migration.&lt;/p&gt;
+&lt;p&gt;I decided for the easy path:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='django.contrib.sessions.backends.cached_db'&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Wait some days to have all useful sessions cached. More than &lt;code&gt;SESSION_COOKIE_AGE&lt;/code&gt; was
+enough to me.&lt;/li&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='django.contrib.sessions.backends.cache'&lt;/code&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;It doesn't work.&lt;/p&gt;
+&lt;p&gt;Both session engines define keys as &lt;code&gt;key_prefix + session_id&lt;/code&gt;, with different
+prefixes. &lt;a href="https://github.com/django/django/blob/ca9872905559026af82000e46cde6f7dedc897b6/docs/topics/http/sessions.txt#L827-L834"&gt;Django do that to avoid namespace clash&lt;/a&gt;.
+It is a sane default, but I want namespace clash to simplify the migration path.&lt;/p&gt;
+&lt;p&gt;I can define custom session backends with the key prefixes I want. Each one
+should be a file because &lt;code&gt;SESSION_ENGINE&lt;/code&gt; must be a module with a &lt;code&gt;SessionStore&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# base.py&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;BaseSessionStoreMixin&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;cache_key_prefix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;busersessionstore&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# cache.py&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.contrib.sessions.backends&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;cache&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;.&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;base&lt;/span&gt;
+
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;base&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;BaseSessionStoreMixin&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cache&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;pass&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# cached_db.py&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.contrib.sessions.backends&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;cached_db&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;.&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;base&lt;/span&gt;
+
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;base&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;BaseSessionStoreMixin&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;cached_db&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;SessionStore&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;pass&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Now I can do the same thing, using my session engines.&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='myproject.sessions.cached_db'&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Wait some days to have all useful sessions cached. More than &lt;code&gt;SESSION_COOKIE_AGE&lt;/code&gt; was
+enough to me.&lt;/li&gt;
+&lt;li&gt;Change &lt;code&gt;SESSION_ENGINE='myproject.sessions.cache'&lt;/code&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;It works!&lt;/p&gt;
+&lt;p&gt;Just as disclaimer, memcached don't have a good way to make this data durable.
+If memcached node restart, all data is lost. We're using redis with replicas,
+so I lose all data only if all nodes explode at the same time.&lt;/p&gt;</content><category term="programming"></category><category term="python"></category><category term="django"></category></entry><entry><title>My Django contributions</title><link href="https://iurisilv.io/2021/03/my-django-contributions.html" rel="alternate"></link><published>2021-03-17T00:00:00-03:00</published><updated>2021-03-17T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-03-17:/2021/03/my-django-contributions.html</id><summary type="html">&lt;p&gt;I started contributing to Django core after a failure in our project.&lt;/p&gt;
+&lt;p&gt;I had to rename a model attribute without touching our database. The solution
+was simple.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# Simple attribute to rename.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 1. Add db_column param.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db_column&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 2. Change the attribute name …&lt;/span&gt;&lt;/pre&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;I started contributing to Django core after a failure in our project.&lt;/p&gt;
+&lt;p&gt;I had to rename a model attribute without touching our database. The solution
+was simple.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# Simple attribute to rename.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 1. Add db_column param.&lt;/span&gt;
+&lt;span class="n"&gt;author&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db_column&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 2. Change the attribute name.&lt;/span&gt;
+&lt;span class="n"&gt;creator&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ForeignKey&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;Author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db_column&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;It was really obvious to me that it should be a noop to database. Even Stack Overflow
+&lt;a class="reference external" href="https://stackoverflow.com/a/33191630/617395"&gt;had a response confirming that&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;The first migration locked our database because it dropped and recreated a constraint.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;SET&lt;/span&gt; &lt;span class="k"&gt;CONSTRAINTS&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt; &lt;span class="k"&gt;IMMEDIATE&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt; &lt;span class="k"&gt;DROP&lt;/span&gt; &lt;span class="k"&gt;CONSTRAINT&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;ALTER&lt;/span&gt; &lt;span class="k"&gt;TABLE&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt; &lt;span class="k"&gt;ADD&lt;/span&gt; &lt;span class="k"&gt;CONSTRAINT&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;
+    &lt;span class="k"&gt;FOREIGN&lt;/span&gt; &lt;span class="k"&gt;KEY&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;REFERENCES&lt;/span&gt; &lt;span class="ss"&gt;&amp;quot;core_author&amp;quot;&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;DEFERRABLE&lt;/span&gt; &lt;span class="k"&gt;INITIALLY&lt;/span&gt; &lt;span class="k"&gt;DEFERRED&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Sad day, but right after that I prepared to run the second step. That time I
+checked the generated SQL with &lt;tt class="docutils literal"&gt;sqlmigrate&lt;/tt&gt; command and discovered it will
+do the same thing again.&lt;/p&gt;
+&lt;p&gt;To avoid another failure, I did only a &lt;tt class="docutils literal"&gt;SeparateDatabaseAndState&lt;/tt&gt; change.
+Works great, but Django could do better handling these migrations.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.db&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Migration&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Migration&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;atomic&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;False&lt;/span&gt;
+    &lt;span class="n"&gt;dependencies&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
+        &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;core&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;0137_auto_20200227_1304&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+    &lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;operations&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;
+        &lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;SeparateDatabaseAndState&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+            &lt;span class="n"&gt;state_operations&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;
+                &lt;span class="n"&gt;migrations&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;RenameField&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+                    &lt;span class="n"&gt;model_name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;book&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;old_name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;author&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;new_name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;creator&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                &lt;span class="p"&gt;),&lt;/span&gt;
+            &lt;span class="p"&gt;],&lt;/span&gt;
+            &lt;span class="n"&gt;database_operations&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="p"&gt;[],&lt;/span&gt;
+        &lt;span class="p"&gt;),&lt;/span&gt;
+    &lt;span class="p"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;After that, I checked Django tickets and didn't found anything related. Created
+a ticket and implemented two pull requests to fix both steps: &lt;a class="reference external" href="https://code.djangoproject.com/ticket/31826"&gt;AlterField with db_column addition should be a noop&lt;/a&gt; and &lt;a class="reference external" href="https://code.djangoproject.com/ticket/31825"&gt;RenameField with db_column should be a noop&lt;/a&gt;. They were merged and released with Django 3.1.1 after long PR conversations.&lt;/p&gt;
+&lt;p&gt;Django is a huge codebase and even a minor change like that took me some days,
+changing the wrong things in the different wrong ways. I learned a lot and was
+able to fix another migrations issue: &lt;a class="reference external" href="https://code.djangoproject.com/ticket/31831"&gt;AlterOrderWithRespectTo() with ForeignKey crash when _order is included in Index()&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Right after these fixes, I upgraded our Django and hit a recent regression:
+&lt;a class="reference external" href="https://code.djangoproject.com/ticket/31870"&gt;App with default_app_config and without apps.py or with an empty apps.py crashes.&lt;/a&gt;. It was a quick fix, but lots of tests written.&lt;/p&gt;
+&lt;p&gt;When our new intern started exploring Django querysets, he had an issue with queryset &lt;cite&gt;in_bulk&lt;/cite&gt; operation, because of incomplete docs and it generated a new ticket and quick fix: &lt;a class="reference external" href="https://code.djangoproject.com/ticket/32313"&gt;Queryset in_bulk docs don't explicit field_name as kwarg only&lt;/a&gt;.&lt;/p&gt;
+</content><category term="programming"></category><category term="python"></category><category term="django"></category></entry><entry><title>Faster parallel pytest-django</title><link href="https://iurisilv.io/2021/03/faster-parallel-pytest-django.html" rel="alternate"></link><published>2021-03-08T08:00:00-03:00</published><updated>2021-03-08T08:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-03-08:/2021/03/faster-parallel-pytest-django.html</id><summary type="html">&lt;p&gt;We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.&lt;/p&gt;
+&lt;p&gt;Unfortunately our CI/CD was really slow after this change.&lt;/p&gt;
+&lt;p&gt;I discovered parallel &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; do their setup different than Django
+unittests. Django create a template database and copy …&lt;/p&gt;</summary><content type="html">&lt;p&gt;We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.&lt;/p&gt;
+&lt;p&gt;Unfortunately our CI/CD was really slow after this change.&lt;/p&gt;
+&lt;p&gt;I discovered parallel &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; do their setup different than Django
+unittests. Django create a template database and copy it to every test node,
+&lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; create one database per node. Running this setup with migrations
+took more than 2 minutes just to have the database created.&lt;/p&gt;
+&lt;p&gt;This is a problem mostly for CI/CD, because local you can run with &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;--reuse-db&lt;/span&gt;&lt;/tt&gt;
+and the overhead is minimal, only when you have database migrations.&lt;/p&gt;
+&lt;p&gt;I wanted to fix this in &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt;, but I discovered it is difficult because
+pytest-xdist don't have a global setup and teardown.&lt;/p&gt;
+&lt;p&gt;Now I have a small hack, working great so far. This is the script running our
+tests:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;./manage.py shell -c &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+&lt;span class="s2"&gt;from django.test.utils import setup_databases&lt;/span&gt;
+&lt;span class="s2"&gt;from xdist.plugin import pytest_xdist_auto_num_workers&lt;/span&gt;
+&lt;span class="s2"&gt;setup_databases(verbosity=True, interactive=False, parallel=pytest_xdist_auto_num_workers())&lt;/span&gt;
+&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+pytest --reuse-db -n auto
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Django unittests generate names like &lt;tt class="docutils literal"&gt;test_yourdb_1&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_2&lt;/tt&gt; and
+&lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; generate names like &lt;tt class="docutils literal"&gt;test_yourdb_gw0&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_gw1&lt;/tt&gt;, their
+names don't match, I had to make a fixture to monkey patch their behaviors.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;pytest_django.fixtures&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;_set_suffix_to_test_databases&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;pytest_django.lazy_django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;skip_if_no_django&lt;/span&gt;
+
+&lt;span class="c1"&gt;# Original code: https://github.com/pytest-dev/pytest-django/blob/bd2ae62968aaf97c6efc7e02ff77ba6160865435/pytest_django/fixtures.py#L46&lt;/span&gt;
+&lt;span class="nd"&gt;@pytest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fixture&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;scope&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;session&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;django_db_modify_db_settings_xdist_suffix&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;skip_if_no_django&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="n"&gt;xdist_suffix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;getattr&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;workerinput&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;{})&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;workerid&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;xdist_suffix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# &amp;#39;gw0&amp;#39; -&amp;gt; &amp;#39;1&amp;#39;, &amp;#39;gw1&amp;#39; -&amp;gt; &amp;#39;2&amp;#39;, ...&lt;/span&gt;
+        &lt;span class="n"&gt;suffix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;int&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;xdist_suffix&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;gw&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;_set_suffix_to_test_databases&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;suffix&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;suffix&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;I tried to make a pull request to &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt;, but this issue exists
+because pytest-xdist don't have hooks to run before and after every node.&lt;/p&gt;
+</content><category term="programming"></category><category term="python"></category><category term="django"></category><category term="pytest"></category></entry><entry><title>Honeycomb Django tricks</title><link href="https://iurisilv.io/2021/01/honeycomb-django-tricks.html" rel="alternate"></link><published>2021-01-10T08:00:00-03:00</published><updated>2021-01-10T08:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-01-10:/2021/01/honeycomb-django-tricks.html</id><summary type="html">&lt;p&gt;&lt;a class="reference external" href="https://www.honeycomb.io/"&gt;Honeycomb&lt;/a&gt; is the observability tool we use everyday at &lt;a class="reference external" href="https://www.buser.com.br/"&gt;Buser&lt;/a&gt;. They help us tracking application bottlenecks, slow database queries, slow requests, requests with too many queries and much more.&lt;/p&gt;
+&lt;p&gt;Their automatic instrumentation with &lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/"&gt;beeline&lt;/a&gt; is a good start, but at some point we had to extend the default behaviour.&lt;/p&gt;
+&lt;div class="section" id="custom-request-data"&gt;
+&lt;h2&gt;Custom …&lt;/h2&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;&lt;a class="reference external" href="https://www.honeycomb.io/"&gt;Honeycomb&lt;/a&gt; is the observability tool we use everyday at &lt;a class="reference external" href="https://www.buser.com.br/"&gt;Buser&lt;/a&gt;. They help us tracking application bottlenecks, slow database queries, slow requests, requests with too many queries and much more.&lt;/p&gt;
+&lt;p&gt;Their automatic instrumentation with &lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/"&gt;beeline&lt;/a&gt; is a good start, but at some point we had to extend the default behaviour.&lt;/p&gt;
+&lt;div class="section" id="custom-request-data"&gt;
+&lt;h2&gt;Custom request data&lt;/h2&gt;
+&lt;p&gt;We extended the &lt;tt class="docutils literal"&gt;HoneyMiddleware&lt;/tt&gt; and changed &lt;tt class="docutils literal"&gt;settings.py MIDDLEWARE&lt;/tt&gt; to use our custom middleware because we wanted to track differences between logged and anonymous users.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;beeline.middleware.django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;HoneycombMiddleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_context_from_request&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;context&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_context_from_request&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;is_authenticated&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+            &lt;span class="n"&gt;context&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;request.user.id&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;user&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;id&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;context&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;We could add &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;context['request.user.is_authenticated']&lt;/span&gt;&lt;/tt&gt; too, but we did that with a derived column &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;EXISTS($&amp;quot;request.user.id&amp;quot;)&lt;/span&gt;&lt;/tt&gt; in Honeycomb side.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="trace-sampling"&gt;
+&lt;h2&gt;Trace sampling&lt;/h2&gt;
+&lt;p&gt;Honeycomb limits are really friendly, &lt;strong&gt;even for their free plan&lt;/strong&gt;, but our traffic increased 5x in 2020 and we reached our plan limits.&lt;/p&gt;
+&lt;p&gt;Their &lt;tt class="docutils literal"&gt;beeline&lt;/tt&gt; client has a &lt;tt class="docutils literal"&gt;sample_rate&lt;/tt&gt; config but it's a dummy implementation, generating imcomplete traces, which is useless to us.&lt;/p&gt;
+&lt;p&gt;We make the sampling decision at the start of the request, unfortunately it's not possible to decide based on request duration or request status.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;beeline.middleware.django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;HoneycombMiddleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;HoneyMiddleware&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="fm"&gt;__call__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="n"&gt;sample_rate&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_sample_rate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;sampled&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+        &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sampled&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nb"&gt;super&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="fm"&gt;__call__&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_sample_rate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+        &lt;span class="c1"&gt;# Add logic here to decide based on path or other request info.&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Now, to sample based on this &lt;tt class="docutils literal"&gt;__honeycomb_sampled__&lt;/tt&gt; info, beeline need a sampler hook.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;beeline&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;event&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="c1"&gt;# The get_request is not Django built-in.&lt;/span&gt;
+    &lt;span class="c1"&gt;# Check django-middleware-global-request project.&lt;/span&gt;
+    &lt;span class="n"&gt;request&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;get_request&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="c1"&gt;# Ignore when we don&amp;#39;t have a request.&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="ow"&gt;not&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="kc"&gt;False&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt;
+
+
+&lt;span class="n"&gt;beeline&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;init&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="request-based-sampling"&gt;
+&lt;h2&gt;Request based sampling&lt;/h2&gt;
+&lt;p&gt;Instead of a fixed sample rate, we have it configured by path and by domain to get better results. Our implementation use Django settings,
+but it is easy to start handling just special cases.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;get_sample_rate&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="bp"&gt;self&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get_host&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;admin.example.com&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# Always trace admin domain, it has low volume but lots of slow batch requests.&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;path&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;/search&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# Reduce high volume path sampling.&lt;/span&gt;
+        &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;
+
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="celery"&gt;
+&lt;h2&gt;Celery&lt;/h2&gt;
+&lt;p&gt;Our project ran only with Django integration for almost a year, focused on critical requests optimizations. We had to offload lots of application work to Celery to handle some bottlenecks, but after that we created a huge blindspot in the stack.&lt;/p&gt;
+&lt;div class="section" id="celery-instrumentation"&gt;
+&lt;h3&gt;Celery instrumentation&lt;/h3&gt;
+&lt;p&gt;Again, beeline has a nice &lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/#celery"&gt;Celery base implementation&lt;/a&gt;, but it doesn't handle sampling well and don't
+instrument Django database queries.&lt;/p&gt;
+&lt;p&gt;Maybe it's a small bug, based on our use, Celery queue name is in &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;delivery_info['routing_key']&lt;/span&gt;&lt;/tt&gt; instead of &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;delivery_info['exchange']&lt;/span&gt;&lt;/tt&gt;. We decided to log
+both values to not lose useful data.&lt;/p&gt;
+&lt;p&gt;I reused ideas from their &lt;a class="reference external" href="https://github.com/honeycombio/beeline-python/blob/2ab8dea5d195096755199ac9badfe671f408bb9d/beeline/middleware/django/__init__.py#L155-L159"&gt;middleware&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;contextlib&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;ExitStack&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;beeline.middleware.django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;HoneyDBWrapper&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery.signals&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;task_prerun&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;task_postrun&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;django.db&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;connections&lt;/span&gt;
+
+&lt;span class="nd"&gt;@task_prerun&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;setup_django_db&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;_exit_stack&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;ExitStack&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="n"&gt;db_wrapper&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;HoneyDBWrapper&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;connection&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;connections&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;all&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+        &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;_exit_stack&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;enter_context&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;connection&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;execute_wrapper&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;db_wrapper&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+&lt;span class="nd"&gt;@task_postrun&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;teardown_django_db&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;_exit_stack&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;close&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="celery-sampling"&gt;
+&lt;h3&gt;Celery sampling&lt;/h3&gt;
+&lt;p&gt;Celery sampling was a challenge, because Celery internals don't have good documentation.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;random&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;celery&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery.signals&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;task_prerun&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;event&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;celery&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;current_app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;current_worker_task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;sampling&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sample_rate&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;sampled&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;random&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;sampled&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;sample_rate&lt;/span&gt;
+
+&lt;span class="nd"&gt;@task_prerun&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;setup_sampling&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;task&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;__honeycomb_sampled__&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sampling&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The &lt;tt class="docutils literal"&gt;beeline.init&lt;/tt&gt; now need a &lt;tt class="docutils literal"&gt;sampler_hook&lt;/tt&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;beeline&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery.signals&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;worker_process_init&lt;/span&gt;
+
+&lt;span class="nd"&gt;@worker_process_init&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;connect&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;initialize_honeycomb&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="n"&gt;kwargs&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;beeline&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;init&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;sampler_hook&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;div class="section" id="uwsgi-integration"&gt;
+&lt;h2&gt;uWSGI integration&lt;/h2&gt;
+&lt;p&gt;&lt;a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/#uwsgi"&gt;uWSGI integrations&lt;/a&gt; was probably our first small issue.&lt;/p&gt;
+&lt;p&gt;Package &lt;tt class="docutils literal"&gt;uwsgidecorators&lt;/tt&gt; is available only inside uwsgi context and we wanted to run in development too. The &lt;tt class="docutils literal"&gt;_init_beeline&lt;/tt&gt; in the code is the docs &lt;tt class="docutils literal"&gt;init_beeline&lt;/tt&gt;. When it's not in uwsgi context, it setup beeline too.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;init_beeline&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="k"&gt;try&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;uwsgidecorators&lt;/span&gt;
+    &lt;span class="k"&gt;except&lt;/span&gt; &lt;span class="ne"&gt;ImportError&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;_init_beeline&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+    &lt;span class="k"&gt;else&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="n"&gt;uwsgidecorators&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;postfork&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;_init_beeline&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;/div&gt;
+</content><category term="programming"></category><category term="python"></category><category term="django"></category><category term="honeycomb"></category></entry><entry><title>Nginx quick configuration</title><link href="https://iurisilv.io/2015/05/nginx-quick-configuration.html" rel="alternate"></link><published>2015-05-31T00:00:00-03:00</published><updated>2015-05-31T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2015-05-31:/2015/05/nginx-quick-configuration.html</id><summary type="html">&lt;p&gt;Nginx is an HTTP server with lots of features. The configuration is easy, but maybe you don't even know the feature exist.&lt;/p&gt;
+&lt;p&gt;I want to present some nginx features and give you some pointers to continue your research.&lt;/p&gt;
+&lt;div class="section" id="the-basics"&gt;
+&lt;h2&gt;The basics&lt;/h2&gt;
+&lt;p&gt;The basic usage of nginx is to make the reverse …&lt;/p&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;Nginx is an HTTP server with lots of features. The configuration is easy, but maybe you don't even know the feature exist.&lt;/p&gt;
+&lt;p&gt;I want to present some nginx features and give you some pointers to continue your research.&lt;/p&gt;
+&lt;div class="section" id="the-basics"&gt;
+&lt;h2&gt;The basics&lt;/h2&gt;
+&lt;p&gt;The basic usage of nginx is to make the reverse proxy to your application. Nginx listen to port &lt;tt class="docutils literal"&gt;80&lt;/tt&gt; waiting for requests and manage
+the connections, passing the requests to your upstream application server.&lt;/p&gt;
+&lt;pre class="code nginx literal-block"&gt;
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;www.yoursite.com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;proxy_pass&lt;/span&gt; &lt;span class="s"&gt;http://localhost:8080&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;The &lt;tt class="docutils literal"&gt;proxy_pass&lt;/tt&gt; directive proxy the request as HTTP to your application listening port &lt;tt class="docutils literal"&gt;8080&lt;/tt&gt;.&lt;/p&gt;
+&lt;p&gt;You can use &lt;tt class="docutils literal"&gt;uwsgi_pass&lt;/tt&gt; to make nginx convert the HTTP to a WSGI request and send it to your WSGI application.&lt;/p&gt;
+&lt;pre class="code nginx literal-block"&gt;
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;www.yoursite.com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;include&lt;/span&gt; &lt;span class="s"&gt;uwsgi_params&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;uwsgi_pass&lt;/span&gt; &lt;span class="n"&gt;localhost&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;8080&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Most features work for HTTP and uWSGI proxy, with some small configuration changes.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="ssl-termination"&gt;
+&lt;h2&gt;SSL Termination&lt;/h2&gt;
+&lt;p&gt;Nginx terminate the SSL connection and send it to your application as plain HTTP.&lt;/p&gt;
+&lt;pre class="code nginx literal-block"&gt;
+&lt;span class="k"&gt;ssl_certificate&lt;/span&gt; &lt;span class="s"&gt;/opt/ssl/www.yoursite.com.crt&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;ssl_certificate_key&lt;/span&gt; &lt;span class="s"&gt;/opt/ssl/www.yoursite.com.key&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;www.yoursite.com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;443&lt;/span&gt; &lt;span class="s"&gt;ssl&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;proxy_pass&lt;/span&gt; &lt;span class="s"&gt;http://localhost:8080&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;If you want a HTTPS only website, add another server block to redirect the HTTP traffic to HTTPS.&lt;/p&gt;
+&lt;pre class="code nginx literal-block"&gt;
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;www.yoursite.com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;return&lt;/span&gt; &lt;span class="mi"&gt;301&lt;/span&gt; &lt;span class="s"&gt;https://&lt;/span&gt;&lt;span class="nv"&gt;$host$request_uri&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div class="section" id="static-files"&gt;
+&lt;h2&gt;Static files&lt;/h2&gt;
+&lt;p&gt;Nginx serve some thousands of static files per second, without hiccups. Do not make your application serve static files, like images and javascripts. Your application is slow, maybe it'll re-render the same asset for each request.&lt;/p&gt;
+&lt;pre class="code nginx literal-block"&gt;
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;www.yoursite.com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;root&lt;/span&gt; &lt;span class="s"&gt;/some/path&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/static/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;try_files&lt;/span&gt; &lt;span class="s"&gt;/generated/&lt;/span&gt;&lt;span class="nv"&gt;$uri&lt;/span&gt; &lt;span class="s"&gt;/cache/&lt;/span&gt;&lt;span class="nv"&gt;$uri&lt;/span&gt; &lt;span class="s"&gt;&amp;#64;myapp&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;try_files&lt;/span&gt; &lt;span class="nv"&gt;$uri&lt;/span&gt; &lt;span class="s"&gt;&amp;#64;myapp&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;&amp;#64;myapp&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;include&lt;/span&gt; &lt;span class="s"&gt;uwsgi_params&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;uwsgi_pass&lt;/span&gt; &lt;span class="n"&gt;localhost&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;8080&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;The &lt;tt class="docutils literal"&gt;try_files&lt;/tt&gt; directive in &lt;tt class="docutils literal"&gt;/static/&lt;/tt&gt; block will check &lt;tt class="docutils literal"&gt;/some/path/generated/static/&lt;/tt&gt; and &lt;tt class="docutils literal"&gt;/some/path/cache/static/&lt;/tt&gt; for your requested file and if it does not exist, send the request to your application.&lt;/p&gt;
+&lt;p&gt;You can change the last &lt;tt class="docutils literal"&gt;try_files&lt;/tt&gt; parameter with &lt;tt class="docutils literal"&gt;=404&lt;/tt&gt; to answer with a 404 instead of pass the request to application.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="load-balancing"&gt;
+&lt;h2&gt;Load balancing&lt;/h2&gt;
+&lt;p&gt;If you want a high available application, nginx can be your load balancer to distribute the load and handle gracefully server failures.&lt;/p&gt;
+&lt;pre class="code nginx literal-block"&gt;
+&lt;span class="k"&gt;upstream&lt;/span&gt; &lt;span class="s"&gt;yourapp&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="s"&gt;http://localhost:8080&lt;/span&gt; &lt;span class="s"&gt;weight=5&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="s"&gt;http://localhost:8081&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;server&lt;/span&gt; &lt;span class="s"&gt;http://example.com:8080&lt;/span&gt; &lt;span class="s"&gt;backup&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;www.yoursite.com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;proxy_pass&lt;/span&gt; &lt;span class="s"&gt;yourapp&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Nginx send the request to your &lt;tt class="docutils literal"&gt;yourapp&lt;/tt&gt; upstream, choosing one server in a weighted round robin way. 5 requests to the first server, 1 request to the second server and so on. If your servers are down, it sends the request to your backup server.&lt;/p&gt;
+&lt;p&gt;If one server fail to answer or give an HTTP error, nginx send the request to the next server. No additional configuration needed.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="caching"&gt;
+&lt;h2&gt;Caching&lt;/h2&gt;
+&lt;p&gt;Some pages are almost static and you don't want it rendering all the time. Nginx can help you serving this content. Configure nginx to cache the page for 10 minutes.&lt;/p&gt;
+&lt;pre class="code nginx literal-block"&gt;
+&lt;span class="k"&gt;uwsgi_cache_path&lt;/span&gt; &lt;span class="s"&gt;/tmp/myapp/content/&lt;/span&gt; &lt;span class="s"&gt;keys_zone=myapp-content:10m&lt;/span&gt;
+                 &lt;span class="s"&gt;loader_threshold=300&lt;/span&gt; &lt;span class="s"&gt;loader_files=200&lt;/span&gt; &lt;span class="s"&gt;max_size=100m&lt;/span&gt; &lt;span class="s"&gt;levels=1:2&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;uwsgi_cache_valid&lt;/span&gt; &lt;span class="mi"&gt;200&lt;/span&gt; &lt;span class="mi"&gt;301&lt;/span&gt; &lt;span class="mi"&gt;302&lt;/span&gt; &lt;span class="mi"&gt;404&lt;/span&gt; &lt;span class="mi"&gt;10m&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;uwsgi_cache_key&lt;/span&gt; &lt;span class="nv"&gt;$host$request_uri&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+&lt;span class="k"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kn"&gt;server_name&lt;/span&gt; &lt;span class="s"&gt;www.yoursite.com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;listen&lt;/span&gt; &lt;span class="mi"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/content/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;uwsgi_cache&lt;/span&gt; &lt;span class="s"&gt;yourcache&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;uwsgi_ignore_headers&lt;/span&gt; &lt;span class="s"&gt;Set-Cookie&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;uwsgi_hide_header&lt;/span&gt; &lt;span class="s"&gt;Set-Cookie&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;add_header&lt;/span&gt; &lt;span class="s"&gt;X-Cache&lt;/span&gt; &lt;span class="nv"&gt;$upstream_cache_status&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;include&lt;/span&gt; &lt;span class="s"&gt;uwsgi_params&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;uwsgi_pass&lt;/span&gt; &lt;span class="n"&gt;localhost&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;8080&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="kn"&gt;location&lt;/span&gt; &lt;span class="s"&gt;/&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kn"&gt;include&lt;/span&gt; &lt;span class="s"&gt;uwsgi_params&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="kn"&gt;uwsgi_pass&lt;/span&gt; &lt;span class="n"&gt;localhost&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="mi"&gt;8080&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;div class="section" id="dynamic-upstreams"&gt;
+&lt;h2&gt;Dynamic upstreams&lt;/h2&gt;
+&lt;p&gt;The commercial subscription has this feature built-in, but you probably don't want one. It costs some thousand dollars per server.&lt;/p&gt;
+&lt;p&gt;The simple way to do it is update the configuration file, adding/removing upstream servers. The &lt;tt class="docutils literal"&gt;nginx reload&lt;/tt&gt; command update the configuration without
+downtime.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="conclusion"&gt;
+&lt;h2&gt;Conclusion&lt;/h2&gt;
+&lt;p&gt;These snippets are just the basics. Use it to understand how it can help you, but check the docs to learn all the features. Nginx is really powerful and can help you to simplify and improve your system architecture.&lt;/p&gt;
+&lt;p&gt;Feel free to contact me if you want some help setting up your nginx server. I'm not a system administrator, but I learnt some things about it.&lt;/p&gt;
+&lt;/div&gt;
+</content><category term="devops"></category><category term="nginx"></category><category term="cache"></category><category term="load balance"></category></entry><entry><title>Funblocker post mortem</title><link href="https://iurisilv.io/2014/11/funblocker-post-mortem.html" rel="alternate"></link><published>2014-11-28T00:00:00-02:00</published><updated>2014-11-28T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2014-11-28:/2014/11/funblocker-post-mortem.html</id><summary type="html">&lt;p&gt;Long time, no text. I'll try to increase the frequency of my posts and don't give up because of the lack of time and excess of lazyness.&lt;/p&gt;
+&lt;p&gt;One of my first open source projects with any traction was Funblocker. I wrote about it in other posts, it was a Chrome …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Long time, no text. I'll try to increase the frequency of my posts and don't give up because of the lack of time and excess of lazyness.&lt;/p&gt;
+&lt;p&gt;One of my first open source projects with any traction was Funblocker. I wrote about it in other posts, it was a Chrome extension to help remove all that stupid reshares from your Facebook timeline based on link context.&lt;/p&gt;
+&lt;p&gt;Funblocker was created in december 2011, had more than 3k active installations, removing more than 400k posts/month. It still has some users and remove 10k posts/month and has 1k active installations.&lt;/p&gt;
+&lt;p&gt;I created it as a side project, started as a JavaScript snippet for personal use, injected with &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/custom-javascript-for-web/poakhlngfciodnhlhhgnaaelnpjljija"&gt;Custom JavaScript for websites extension&lt;/a&gt;. It was useful for some job interviews and for my timeline sanity. Also, I learnt how to write a Chrome extension.&lt;/p&gt;
+&lt;p&gt;Fortunately, Facebook improved their ways to avoid these posts with built-in features, so this extension is almost useless and it is some abandonware now. My last commit is from nov/2013 and I have some bug issues reported and never fixed.&lt;/p&gt;
+&lt;p&gt;Check the Google Analytics events below, counting basically posts removed.&lt;/p&gt;
+&lt;img alt="Funblocker analytics" class="align-center" src="https://iurisilv.io/images/funblocker-post-mortem/funblocker-analytics.png" /&gt;
+&lt;p&gt;For historical reasons, the &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"&gt;FunBlocker extension&lt;/a&gt; is still available and &lt;a class="reference external" href="http://github.com/iurisilvio/FunBlocker"&gt;FunBlocker code is on GitHub&lt;/a&gt;.&lt;/p&gt;
+</content><category term="stats"></category><category term="funblocker"></category></entry><entry><title>24pullrequests post mortem</title><link href="https://iurisilv.io/2013/01/24pullrequests-post-mortem.html" rel="alternate"></link><published>2013-01-08T00:00:00-02:00</published><updated>2013-01-08T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2013-01-08:/2013/01/24pullrequests-post-mortem.html</id><summary type="html">&lt;p&gt;During last december, I attended to &lt;a class="reference external" href="http://24pullrequests.com"&gt;24pullrequests.com&lt;/a&gt;, a project to engage people to make one pull request per day until Christmas.&lt;/p&gt;
+&lt;p&gt;After it, I want to know how much a simple gamification over a common task can improve the results. Yes, I always helped some projects with pull requests …&lt;/p&gt;</summary><content type="html">&lt;p&gt;During last december, I attended to &lt;a class="reference external" href="http://24pullrequests.com"&gt;24pullrequests.com&lt;/a&gt;, a project to engage people to make one pull request per day until Christmas.&lt;/p&gt;
+&lt;p&gt;After it, I want to know how much a simple gamification over a common task can improve the results. Yes, I always helped some projects with pull requests, issues, code reviews, but during 24pullrequests project, I increased my work in GitHub open source projects.&lt;/p&gt;
+&lt;p&gt;So, I used data from GitHub to understand the impact of 24pullrequests. My numbers does not match public 24pullrequests numbers, but I did it based in GitHub data and I expect it is correct (check &lt;a class="reference external" href="https://github.com/andrew/24pullrequests/issues/236"&gt;andrew/24pullrequests#236&lt;/a&gt;).&lt;/p&gt;
+&lt;p&gt;First, the basic numbers:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;ul class="simple"&gt;
+&lt;li&gt;&lt;strong&gt;2724 developers&lt;/strong&gt; registered&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;642 developers&lt;/strong&gt; with at least one pull request&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;2773 pull requests&lt;/strong&gt; opened&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;1299 projects&lt;/strong&gt; with at least one pull request&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Ok, these numbers say nothing about 24pullrequests impact. Maybe people just did a lot of pull requests and 24pullrequests has nothing with it. Maybe people are creating useless pull requests just to &amp;quot;win&amp;quot; the game.&lt;/p&gt;
+&lt;p&gt;I'm sure it is not the best comparison, but I compared these data with november data. In november, all these registered developers opened &lt;strong&gt;1558 pull requests&lt;/strong&gt; to &lt;strong&gt;837 projects&lt;/strong&gt;. Each month had around &lt;strong&gt;66%&lt;/strong&gt; of pull requests merged, almost the same merge rate.&lt;/p&gt;
+&lt;img alt="stats by month" class="align-center" src="https://iurisilv.io/images/24pullrequests-post-mortem/stats.png" /&gt;
+&lt;img alt="pull requests per day" class="align-center" src="https://iurisilv.io/images/24pullrequests-post-mortem/pull-requests-per-day.png" /&gt;
+&lt;p&gt;Some projects had a lot of engagement, but the first project was the &lt;strong&gt;24pullrequests&lt;/strong&gt;, with &lt;strong&gt;88 pull requests&lt;/strong&gt;.&lt;/p&gt;
+&lt;img alt="Pull requests per project" class="align-center" src="https://iurisilv.io/images/24pullrequests-post-mortem/pull-requests-per-project.png" /&gt;
+&lt;p&gt;To write these post, I calculated a lot of stats and did some graphics, but the most surprisingly numbers to me were these last one. 4 of the &lt;strong&gt;10 developers&lt;/strong&gt; with most pull requests did not created a pull request in november and only one did more than &lt;strong&gt;10 pull requests&lt;/strong&gt;. I double checked these data because I did not know I had zero pull request in november.&lt;/p&gt;
+&lt;img alt="Pull requests per developer" class="align-center" src="https://iurisilv.io/images/24pullrequests-post-mortem/pull-requests-per-developer.png" /&gt;
+&lt;p&gt;This last image clearly show how much 24pullrequests encouraged people to open source projects.&lt;/p&gt;
+&lt;p&gt;It is dificult to compare these data, they can have a lot of external factors, like holidays, classes and more. I can just say it was an awesome project and I really enjoyed it. Awesome work, &lt;a class="reference external" href="http://teabass.com/"&gt;Andrew&lt;/a&gt;!&lt;/p&gt;
+</content><category term="stats"></category><category term="24pullrequests"></category><category term="post mortem"></category></entry><entry><title>Wordpress: "You do not have sufficient permissions to access this page."</title><link href="https://iurisilv.io/2012/11/wordpress-you-do-not-have-sufficient-permissions-to-access-this-page.html" rel="alternate"></link><published>2012-11-06T00:00:00-02:00</published><updated>2012-11-06T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-11-06:/2012/11/wordpress-you-do-not-have-sufficient-permissions-to-access-this-page.html</id><summary type="html">&lt;p&gt;After I migrate my blog to my production environment, I was not able to login in &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;/wp-admin/&lt;/span&gt;&lt;/tt&gt;, receiving a quick message even in debug mode:&lt;/p&gt;
+&lt;p&gt;&lt;tt class="docutils literal"&gt;&amp;quot;You do not have sufficient permissions to access this page.&amp;quot;&lt;/tt&gt;&lt;/p&gt;
+&lt;p&gt;Ok, I just copied my database and my code, just changing configurations. &lt;a class="reference external" href="https://www.google.com/webhpq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22&amp;amp;oq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22"&gt;Google have a …&lt;/a&gt;&lt;/p&gt;</summary><content type="html">&lt;p&gt;After I migrate my blog to my production environment, I was not able to login in &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;/wp-admin/&lt;/span&gt;&lt;/tt&gt;, receiving a quick message even in debug mode:&lt;/p&gt;
+&lt;p&gt;&lt;tt class="docutils literal"&gt;&amp;quot;You do not have sufficient permissions to access this page.&amp;quot;&lt;/tt&gt;&lt;/p&gt;
+&lt;p&gt;Ok, I just copied my database and my code, just changing configurations. &lt;a class="reference external" href="https://www.google.com/webhpq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22&amp;amp;oq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22"&gt;Google have a lot of results about this issue&lt;/a&gt;, but it is not a simple problem. This message have a lot of meanings, maybe you just don't have access to database.&lt;/p&gt;
+&lt;p&gt;I used almost a day reading Google results, but no one solved my problem. Of course, after I decided to stop, I get my &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;wp-config.php&lt;/span&gt;&lt;/tt&gt; files (development and production) and diffed then (&lt;a class="reference external" href="http://www.quickdiff.com"&gt;http://www.quickdiff.com&lt;/a&gt; is awesome).&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="gd"&gt;- $table_prefix = &amp;#39;wpProject_&amp;#39;;&lt;/span&gt;
+&lt;span class="gi"&gt;+ $table_prefix = &amp;#39;wpproject_&amp;#39;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;If you know a bit about MySQL, you know tables are not case sensitive in Windows. Wordpress don't care about that and don't give you any hint. So, if you found this post because you had a similar problem, go check your configurations.&lt;/p&gt;
+&lt;p&gt;Just to make it obvious to anyone trying to solve the problem: &lt;strong&gt;TABLE PREFIX IS CASE SENSITIVE&lt;/strong&gt;. Of course, maybe it is not the answer you need, because the &amp;quot;error message&amp;quot; does not give you much information.&lt;/p&gt;
+</content><category term="issue"></category><category term="wordpress"></category><category term="noob"></category></entry><entry><title>Google Analytics memory leak in Chrome</title><link href="https://iurisilv.io/2012/11/google-analytics-memory-leak-in-chrome.html" rel="alternate"></link><published>2012-11-05T00:00:00-02:00</published><updated>2012-11-05T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-11-05:/2012/11/google-analytics-memory-leak-in-chrome.html</id><summary type="html">&lt;p&gt;In last days, after I upgraded to Ubuntu 12.10 (it may be related with the issue or not), I experienced a weird slowness in the whole OS. Using &lt;tt class="docutils literal"&gt;top&lt;/tt&gt;, I found a Chrome tab consuming around 1.2GB.&lt;/p&gt;
+&lt;p&gt;It was a tab with a Google Analytics realtime view. I …&lt;/p&gt;</summary><content type="html">&lt;p&gt;In last days, after I upgraded to Ubuntu 12.10 (it may be related with the issue or not), I experienced a weird slowness in the whole OS. Using &lt;tt class="docutils literal"&gt;top&lt;/tt&gt;, I found a Chrome tab consuming around 1.2GB.&lt;/p&gt;
+&lt;p&gt;It was a tab with a Google Analytics realtime view. I keep this tab open almost all the time in a machine, so I know it is a memory consuming site, but I never saw something like that. I re-opened the same tab, which started with ~100MB and in a few hours it crashed again after consuming all virtual memory.&lt;/p&gt;
+&lt;p&gt;So far it was just a memory consuming application, but something is really wrong with Chrome or with Google Analytics. In both cases, it is Google fault.&lt;/p&gt;
+&lt;p&gt;I found &lt;a class="reference external" href="http://thepileof.blogspot.com.br/2012/01/google-chrome-memory-leak-discovered.html"&gt;another report&lt;/a&gt;, but it happened only after a week with Google Analytics realtime running.&lt;/p&gt;
+&lt;p&gt;I'll report this issue to Chromium project and I'll try to profile this tab with Chrome Developer Tools to get more information about the problem.&lt;/p&gt;
+&lt;p&gt;Take a look at my Google Chrome Task Manager:&lt;/p&gt;
+&lt;img alt="Chrome/Google Analytics memory leak" src="https://iurisilv.io/images/google-analytics-memory-leak-in-chrome/task-manager.png" style="width: 400px;" /&gt;
+</content><category term="issue"></category><category term="chrome"></category></entry><entry><title>Bottle wsgilog</title><link href="https://iurisilv.io/2012/09/bottle-wsgilog.html" rel="alternate"></link><published>2012-09-06T00:00:00-03:00</published><updated>2012-09-06T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-09-06:/2012/09/bottle-wsgilog.html</id><summary type="html">&lt;p&gt;Python has awesome tools for logging, including standard logging module. Also, through WSGI protocol we have the wsgilog middleware. Using it is easy with any Python web framework.&lt;/p&gt;
+&lt;p&gt;You can easily integrate it in bottle environment.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;bottle&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;wsgilog&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;log&lt;/span&gt;
+
+&lt;span class="n"&gt;app&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Bottle&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;catchall&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kc"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;logger_middleware&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tohtml …&lt;/span&gt;&lt;/pre&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;Python has awesome tools for logging, including standard logging module. Also, through WSGI protocol we have the wsgilog middleware. Using it is easy with any Python web framework.&lt;/p&gt;
+&lt;p&gt;You can easily integrate it in bottle environment.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;bottle&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;wsgilog&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;log&lt;/span&gt;
+
+&lt;span class="n"&gt;app&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Bottle&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;catchall&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kc"&gt;False&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;logger_middleware&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;tohtml&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kc"&gt;True&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;tofile&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;wsgi.log&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;tostream&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kc"&gt;True&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;toprint&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="kc"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="nd"&gt;@app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;route&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;/&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;index&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="nb"&gt;print&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;STDOUT is logged.&amp;#39;&lt;/span&gt;
+    &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;environ&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;wsgilog.logger&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;info&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;This information is logged.&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="c1"&gt;# Exception will be logged and sent to the browser formatted as HTML only if app catchall=False.&lt;/span&gt;
+    &lt;span class="k"&gt;raise&lt;/span&gt; &lt;span class="ne"&gt;Exception&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+&lt;span class="n"&gt;app&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;logger_middleware&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;run&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;If you need to log each call to bottle, you can use &lt;a class="reference external" href="http://bottlepy.org/docs/dev/api.html#bottle.Bottle.hook"&gt;application hooks&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nd"&gt;@app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;hook&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;before_request&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;before_request&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="n"&gt;logger&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;environ&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;wsgilog.logger&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;logger&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;info&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;before_request &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt; &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;method&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;path&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+
+&lt;span class="nd"&gt;@app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;hook&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;after_request&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;after_request&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="n"&gt;logger&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;environ&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;wsgilog.logger&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="n"&gt;logger&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;info&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;after_request &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt; &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;method&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;path&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+</content><category term="programming"></category><category term="python"></category><category term="bottle"></category></entry><entry><title>Python thread pool</title><link href="https://iurisilv.io/2012/09/python-thread-pool.html" rel="alternate"></link><published>2012-09-03T00:00:00-03:00</published><updated>2012-09-03T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-09-03:/2012/09/python-thread-pool.html</id><summary type="html">&lt;p&gt;It is just a small note about a hidden-ish Python feature. Looking for a thread pool solution, I found the threading module has no support to it.&lt;/p&gt;
+&lt;p&gt;The most common answers talk about &lt;a class="reference external" href="http://code.google.com/p/pythonthreadpool/"&gt;pythonthreadpool library&lt;/a&gt; or &lt;a class="reference external" href="http://code.activestate.com/recipes/302746-simplest-useful-i-hope-thread-pool-example/"&gt;some ActiveState cookbook recipe&lt;/a&gt;. I'm pretty sure it solves the problem, but that is …&lt;/p&gt;</summary><content type="html">&lt;p&gt;It is just a small note about a hidden-ish Python feature. Looking for a thread pool solution, I found the threading module has no support to it.&lt;/p&gt;
+&lt;p&gt;The most common answers talk about &lt;a class="reference external" href="http://code.google.com/p/pythonthreadpool/"&gt;pythonthreadpool library&lt;/a&gt; or &lt;a class="reference external" href="http://code.activestate.com/recipes/302746-simplest-useful-i-hope-thread-pool-example/"&gt;some ActiveState cookbook recipe&lt;/a&gt;. I'm pretty sure it solves the problem, but that is not how Python should work.&lt;/p&gt;
+&lt;p&gt;If you take a look at &lt;tt class="docutils literal"&gt;multiprocessing.dummy&lt;/tt&gt; module, you will find it has a Pool implementation using the &lt;tt class="docutils literal"&gt;threading&lt;/tt&gt; module. I don't know why it is not properly documented, but it replicates multiprocessing pool, so that is exactly what I need.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;multiprocessing.dummy&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Pool&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;f&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="c1"&gt;# run something cool here&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;**&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;
+
+&lt;span class="n"&gt;pool&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Pool&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;processes&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;result&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;pool&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;map&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+&lt;span class="nb"&gt;print&lt;/span&gt; &lt;span class="n"&gt;result&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Check &lt;a class="reference external" href="http://docs.python.org/library/multiprocessing.html#module-multiprocessing.pool"&gt;multiprocessing.Pool docs&lt;/a&gt;.&lt;/p&gt;
+</content><category term="programming"></category><category term="python"></category><category term="multithreading"></category></entry><entry><title>Chrome will break extensions backward compatibility</title><link href="https://iurisilv.io/2012/07/chrome-will-break-extensions-backward-compatibility.html" rel="alternate"></link><published>2012-07-28T00:00:00-03:00</published><updated>2012-07-28T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-07-28:/2012/07/chrome-will-break-extensions-backward-compatibility.html</id><summary type="html">&lt;p&gt;If you develop a Chrome Extension, you should know that. Some days ago, I received a scary red warning during development of &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"&gt;FunBlocker&lt;/a&gt; Chrome Extension.&lt;/p&gt;
+&lt;img alt="Chrome manifest warning" src="https://iurisilv.io/images/chrome-will-break-extensions-backward-compatibility/manifest-warning.png" style="width: 550px;" /&gt;
+&lt;p&gt;No problem, I can just follow the rules defined in &lt;a class="reference external" href="http://code.google.com/chrome/extensions/manifestVersion.html"&gt;Chrome Extensions Manifest Version&lt;/a&gt; and migrate my manifest to get rid of this warning. I …&lt;/p&gt;</summary><content type="html">&lt;p&gt;If you develop a Chrome Extension, you should know that. Some days ago, I received a scary red warning during development of &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"&gt;FunBlocker&lt;/a&gt; Chrome Extension.&lt;/p&gt;
+&lt;img alt="Chrome manifest warning" src="https://iurisilv.io/images/chrome-will-break-extensions-backward-compatibility/manifest-warning.png" style="width: 550px;" /&gt;
+&lt;p&gt;No problem, I can just follow the rules defined in &lt;a class="reference external" href="http://code.google.com/chrome/extensions/manifestVersion.html"&gt;Chrome Extensions Manifest Version&lt;/a&gt; and migrate my manifest to get rid of this warning. I just released it and broke my plugin. Why?? It was suposed to Chrome maintain everything up to date and working fine.&lt;/p&gt;
+&lt;div class="section" id="things-you-should-know"&gt;
+&lt;h2&gt;Things you should know&lt;/h2&gt;
+&lt;ul class="simple"&gt;
+&lt;li&gt;You can disable Chrome auto updates. Yeah, it is not a good option, but I can not blame the user.&lt;/li&gt;
+&lt;li&gt;Chrome Extensions are in fact Chromium extensions. Other Chromium based browsers do not update often and extension developers do not have an easy way to handle that.&lt;/li&gt;
+&lt;li&gt;Chrome will maintain the extension up to date, even if it does not understand the manifest file.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Reading some docs, I found I can set &lt;a class="reference external" href="http://code.google.com/chrome/extensions/manifest.html#minimum_chrome_version"&gt;minimum_chrome_version&lt;/a&gt;, but to be honest my app does not depend of the Chrome version.&lt;/p&gt;
+&lt;p&gt;Based in Chrome schedule, Web Store will block new extensions with &lt;tt class="docutils literal"&gt;manifest_version=1&lt;/tt&gt; after Chrome 21 release. I am just maintaining an extension, so it is not a problem for me. Web Store will block updates with &lt;tt class="docutils literal"&gt;manifest_version=1&lt;/tt&gt; after Chrome 23 release, planned to early november 2012.&lt;/p&gt;
+&lt;p&gt;Based in my Analytics data, I have more than 3% of users in browser versions minor than 18 or in Rockmelt, which will not work with manifest upgrade.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="my-solution"&gt;
+&lt;h2&gt;My solution&lt;/h2&gt;
+&lt;p&gt;I decided to maintain &lt;tt class="docutils literal"&gt;manifest_version=1&lt;/tt&gt; as long as possible (maybe early november). In next months, I will add a friendly warning to my options page like &amp;quot;sorry, but this plugin will not receive updates until you update your browser&amp;quot;. After that, I will add &lt;tt class="docutils literal"&gt;minimum_chrome_version=18&lt;/tt&gt; and upgrade the &lt;a class="reference external" href="http://code.google.com/chrome/extensions/manifest.html#manifest_version"&gt;manifest_version&lt;/a&gt;. Docs does not recommended to use version 2 in Chrome 17, so 18 is a good number.&lt;/p&gt;
+&lt;p&gt;Just to be clear, I am not against this manifest upgrade, it is really interesting to improve browser security, but some changes break compatilibity instead of do a painless transition.&lt;/p&gt;
+&lt;/div&gt;
+</content><category term="programming"></category><category term="chrome"></category></entry><entry><title>ASP.NET MaskedEdit is broken in WebKit</title><link href="https://iurisilv.io/2012/07/aspnet-maskededit-is-broken-in-webkit.html" rel="alternate"></link><published>2012-07-19T00:00:00-03:00</published><updated>2012-07-19T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-07-19:/2012/07/aspnet-maskededit-is-broken-in-webkit.html</id><summary type="html">&lt;p&gt;Ajax Control Tookit is one of an important library in .NET world. It handles a lot of dynamic JavaScript things you do not want to do alone.&lt;/p&gt;
+&lt;p&gt;They have a component called MaskedEdit to handle a input formatted text like &lt;tt class="docutils literal"&gt;__/__/__&lt;/tt&gt;. Take a look at the &lt;a class="reference external" href="http://www.asp.net/ajaxLibrary/AjaxControlToolkitSampleSite/MaskedEdit/MaskedEdit.aspx"&gt;MaskedEdit example …&lt;/a&gt;&lt;/p&gt;</summary><content type="html">&lt;p&gt;Ajax Control Tookit is one of an important library in .NET world. It handles a lot of dynamic JavaScript things you do not want to do alone.&lt;/p&gt;
+&lt;p&gt;They have a component called MaskedEdit to handle a input formatted text like &lt;tt class="docutils literal"&gt;__/__/__&lt;/tt&gt;. Take a look at the &lt;a class="reference external" href="http://www.asp.net/ajaxLibrary/AjaxControlToolkitSampleSite/MaskedEdit/MaskedEdit.aspx"&gt;MaskedEdit example&lt;/a&gt;. Oh, if you use Chrome or Safari, it does not work like you expect with delete, backspace and other &amp;quot;special&amp;quot; keys. Cool, han?&lt;/p&gt;
+&lt;p&gt;This bug is from 2008, documented in &lt;a class="reference external" href="http://ajaxcontroltoolkit.codeplex.com/workitem/26978"&gt;issue 26978&lt;/a&gt;, &lt;a class="reference external" href="http://ajaxcontroltoolkit.codeplex.com/workitem/17166"&gt;issue 17166&lt;/a&gt; and &lt;a class="reference external" href="http://code.google.com/p/chromium/issues/detail?id=3341"&gt;chromium issue 3341 too&lt;/a&gt;. These links have easy solutions: just take the code, change a couple of lines and recompile everything, but it was never merged or released.&lt;/p&gt;
+&lt;p&gt;I do not want to fork the code to change two lines, but I can just hack around JavaScript and we are fine. If you opened the MaskedEdit example in Chrome, run the code below in JavaScript console and try again. I took some pieces of code around the internet and wrote my own to work with normal and minified versions of current version of the lib.&lt;/p&gt;
+&lt;pre class="code javascript literal-block"&gt;
+&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="kd"&gt;function&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;Sys&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;Browser&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;agent&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="nx"&gt;Sys&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;Browser&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;Safari&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="c1"&gt;// don't worry, to this lib Chrome is Safari
+&lt;/span&gt;    &lt;span class="kd"&gt;function&lt;/span&gt; &lt;span class="nx"&gt;funcbody&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;f&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+      &lt;span class="kd"&gt;var&lt;/span&gt; &lt;span class="nx"&gt;s&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;f&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;toString&lt;/span&gt;&lt;span class="p"&gt;();&lt;/span&gt;
+      &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="nx"&gt;s&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;substring&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;s&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;indexOf&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;'{'&lt;/span&gt;&lt;span class="p"&gt;));&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="k"&gt;try&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nx"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;Sys&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;Extended&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;UI&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;MaskedEditBehavior&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;prototype&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt; &lt;span class="k"&gt;catch&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;e&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="nx"&gt;p&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kc"&gt;null&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;p&lt;/span&gt; &lt;span class="o"&gt;!=&lt;/span&gt; &lt;span class="kc"&gt;null&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+      &lt;span class="nx"&gt;p&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;_ExecuteNav&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nb"&gt;Function&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;g&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;h&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+        &lt;span class="s1"&gt;'var c=-1,e=&amp;quot; &amp;quot;,a=&amp;quot;&amp;quot;,b=false,d=true,p=&amp;quot;keypress&amp;quot;,s=&amp;quot;keydown&amp;quot;,evt=g,scanCode=h;'&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt;
+        &lt;span class="nx"&gt;funcbody&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;p&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;_ExecuteNav&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+          &lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="sr"&gt;/(g\.type==p\)if\(h==8\))/&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;g.type==s||$1&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+          &lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="sr"&gt;/(== Sys\.Browser\.InternetExplorer \|\| evt\.type == \&amp;quot;keypress\&amp;quot;)/&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+                   &lt;span class="s2"&gt;&amp;quot;$1 || evt.type == \&amp;quot;keydown\&amp;quot;&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;));&lt;/span&gt;
+      &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;})();&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;The problem happens because the &lt;tt class="docutils literal"&gt;MaskedEditBehavior&lt;/tt&gt; handles only &lt;tt class="docutils literal"&gt;keypress&lt;/tt&gt; event (or bypass IE browsers). My hack just changes it to handle &lt;tt class="docutils literal"&gt;keydown&lt;/tt&gt; too, because &lt;a class="reference external" href="http://www.w3.org/TR/2010/WD-DOM-Level-3-Events-20100907/#event-type-keypress"&gt;W3C says&lt;/a&gt; &amp;quot;dispatch this event when a key is pressed down, if and only if that key normally produces a character value&amp;quot;.&lt;/p&gt;
+&lt;p&gt;This hack solved the issue to me and is running in production now, but it is a big reason to avoid Ajax Control Toolkit if you can. Maybe they will not support you.&lt;/p&gt;
+</content><category term="programming"></category><category term="csharp"></category><category term="hack"></category><category term="issue"></category></entry><entry><title>Starting a blog</title><link href="https://iurisilv.io/2012/07/starting-a-blog.html" rel="alternate"></link><published>2012-07-13T00:00:00-03:00</published><updated>2012-07-13T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-07-13:/2012/07/starting-a-blog.html</id><summary type="html">&lt;p&gt;It is my first post on this blog. Posts older than this one are just some backup from my previous failed attempts to maintain a blog.&lt;/p&gt;
+&lt;p&gt;I am using the awesome &lt;a class="reference external" href="https://github.com/ametaireau/pelican"&gt;Pelican&lt;/a&gt; to create my static pages and &lt;a class="reference external" href="http://pages.github.com"&gt;Github Pages&lt;/a&gt; to serve my blog, because I want a Python based …&lt;/p&gt;</summary><content type="html">&lt;p&gt;It is my first post on this blog. Posts older than this one are just some backup from my previous failed attempts to maintain a blog.&lt;/p&gt;
+&lt;p&gt;I am using the awesome &lt;a class="reference external" href="https://github.com/ametaireau/pelican"&gt;Pelican&lt;/a&gt; to create my static pages and &lt;a class="reference external" href="http://pages.github.com"&gt;Github Pages&lt;/a&gt; to serve my blog, because I want a Python based static files generator and I want to learn about &lt;a class="reference external" href="http://sphinx.pocoo.org/rest.html"&gt;reStructuredText&lt;/a&gt;. For now, it has just default things, but I will improve it soon.&lt;/p&gt;
+</content><category term="misc"></category><category term="meta"></category></entry><entry><title>Some ways to remove a Facebook post</title><link href="https://iurisilv.io/2012/05/some-ways-to-remove-a-facebook-post.html" rel="alternate"></link><published>2012-05-06T00:00:00-03:00</published><updated>2012-05-06T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2012-05-06:/2012/05/some-ways-to-remove-a-facebook-post.html</id><summary type="html">&lt;p&gt;During my adventures developing &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"&gt;FunBlocker&lt;/a&gt;, I needed to hide some Facebook posts.&lt;/p&gt;
+&lt;p&gt;Here is some of my code history in GitHub, analysing my different solutions to this problem.&lt;/p&gt;
+&lt;div class="section" id="just-hide-it"&gt;
+&lt;h2&gt;Just hide it&lt;/h2&gt;
+&lt;p&gt;My first solution was just hide the post with CSS &lt;tt class="docutils literal"&gt;display:none&lt;/tt&gt;, when I still ran it with &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/abdogfafejmdomllalkdegagoehgbdbk"&gt;JavaScript …&lt;/a&gt;&lt;/p&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;During my adventures developing &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"&gt;FunBlocker&lt;/a&gt;, I needed to hide some Facebook posts.&lt;/p&gt;
+&lt;p&gt;Here is some of my code history in GitHub, analysing my different solutions to this problem.&lt;/p&gt;
+&lt;div class="section" id="just-hide-it"&gt;
+&lt;h2&gt;Just hide it&lt;/h2&gt;
+&lt;p&gt;My first solution was just hide the post with CSS &lt;tt class="docutils literal"&gt;display:none&lt;/tt&gt;, when I still ran it with &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/abdogfafejmdomllalkdegagoehgbdbk"&gt;JavaScript Injector&lt;/a&gt; and jQuery. It was an easy task, &lt;a class="reference external" href="https://github.com/iurisilvio/FunBlocker/blob/2853f5f6473153d1ebf6b9154bf98724429a2e01/main.js#L7"&gt;my first commit had only 12 lines of code&lt;/a&gt;. You can check the whole code there.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="remove-dom-element"&gt;
+&lt;h2&gt;Remove DOM element&lt;/h2&gt;
+&lt;p&gt;When I turned FunBlocker in a Chrome Extension, I decided not to depend on &lt;a class="reference external" href="http://www.jquery.com"&gt;jQuery&lt;/a&gt;, because it will run in background of Facebook and should not slow down the timeline performance. Or maybe I decided that because I never had programmed these basic things without jQuery.&lt;/p&gt;
+&lt;p&gt;So, I find a link in a post I want to remove from the DOM.&lt;/p&gt;
+&lt;pre class="code html literal-block"&gt;
+&lt;span class="c"&gt;&amp;lt;!-- Facebook HTML posts tree looks like this --&amp;gt;&lt;/span&gt;
+&lt;span class="p"&gt;&amp;lt;&lt;/span&gt;&lt;span class="nt"&gt;ul&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class="p"&gt;&amp;lt;&lt;/span&gt;&lt;span class="nt"&gt;li&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class="p"&gt;&amp;lt;&lt;/span&gt;&lt;span class="nt"&gt;div&lt;/span&gt; &lt;span class="na"&gt;class&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;storyContent&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;
+            [your friend sharing some shit here]
+            &lt;span class="p"&gt;&amp;lt;&lt;/span&gt;&lt;span class="nt"&gt;a&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;Page I do not want here&lt;span class="p"&gt;&amp;lt;/&lt;/span&gt;&lt;span class="nt"&gt;a&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;
+        &lt;span class="p"&gt;&amp;lt;/&lt;/span&gt;&lt;span class="nt"&gt;div&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class="p"&gt;&amp;lt;/&lt;/span&gt;&lt;span class="nt"&gt;li&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;
+&lt;span class="p"&gt;&amp;lt;/&lt;/span&gt;&lt;span class="nt"&gt;ul&lt;/span&gt;&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;I search for links and get the parent element with class containing &lt;tt class="docutils literal"&gt;storyContent&lt;/tt&gt;. After that, I call &lt;tt class="docutils literal"&gt;remove_story&lt;/tt&gt;:&lt;/p&gt;
+&lt;pre class="code javascript literal-block"&gt;
+&lt;span class="kd"&gt;function&lt;/span&gt; &lt;span class="nx"&gt;remove_story&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;story&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="kd"&gt;var&lt;/span&gt; &lt;span class="nx"&gt;node&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;story&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="kd"&gt;var&lt;/span&gt; &lt;span class="nx"&gt;parent&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;node&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;parentNode&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="k"&gt;while&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;parent&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;tagName&lt;/span&gt; &lt;span class="o"&gt;!=&lt;/span&gt; &lt;span class="s1"&gt;'UL'&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="kd"&gt;var&lt;/span&gt; &lt;span class="nx"&gt;tmp&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;parent&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="nx"&gt;parent&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;parent&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;parentNode&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="nx"&gt;node&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nx"&gt;tmp&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="nx"&gt;parent&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;removeChild&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;node&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;It was more code than my first version, but I learnt a lot without the jQuery dependency. At this moment, I had &lt;a class="reference external" href="https://github.com/iurisilvio/FunBlocker/blob/b57200734740e31c7505d9ab737041945943b7dd/fb.js#L14"&gt;62 lines of code&lt;/a&gt; on GitHub.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="click-hide-story"&gt;
+&lt;h2&gt;Click Hide Story&lt;/h2&gt;
+&lt;p&gt;Facebook has an option in menu to remove the content from your timeline. How can I use it? Without jQuery it is not a streight forward task. The code below do almost the same thing than &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;$(element).click()&lt;/span&gt;&lt;/tt&gt;.&lt;/p&gt;
+&lt;pre class="code javascript literal-block"&gt;
+&lt;span class="kd"&gt;var&lt;/span&gt; &lt;span class="nx"&gt;event_&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;document&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;createEvent&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;MouseEvents&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+&lt;span class="nx"&gt;event_&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;initEvent&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;click&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kc"&gt;true&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="kc"&gt;true&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt; &lt;span class="c1"&gt;// event type, bubbling, cancelable
+&lt;/span&gt;&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;element&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="c1"&gt;// element is the link I want to click
+&lt;/span&gt;    &lt;span class="nx"&gt;element&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;dispatchEvent&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nx"&gt;event_&lt;/span&gt;&lt;span class="p"&gt;);&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;
+&lt;p&gt;Yes, sometimes it works. Other times Facebook just do not have the link I want because it is dinamically loaded. To solve this problem, I want to trigger the loading and after that click the button I need.&lt;/p&gt;
+&lt;p&gt;I preferred another approach.&lt;/p&gt;
+&lt;/div&gt;
+&lt;div class="section" id="mimic-facebook"&gt;
+&lt;h2&gt;Mimic Facebook&lt;/h2&gt;
+&lt;p&gt;I know the click discussed above trigger some action to Facebook servers. The &lt;tt class="docutils literal"&gt;Hide Story&lt;/tt&gt; button triggers a HTTP call to &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;https://www.facebook.com/ajax/feed/filter_action/uninteresting/?__a=1&lt;/span&gt;&lt;/tt&gt; with some trick parameters. If I do the same thing, everything works.&lt;/p&gt;
+&lt;p&gt;After some research and reverse engineering in Facebook messages, JavaScript and HTML, I understanded a bit about what are these parameters and how to do this one call to Facebook.&lt;/p&gt;
+&lt;p&gt;To be honest, I do not know how exactly it works, but it is there and makes my timeline better everyday. If you need something like that, take a look at &lt;a class="reference external" href="https://github.com/iurisilvio/FunBlocker/blob/5a0070ce5a6df8d49e41a58aa66801dcf3e90afe/fb.js#L119"&gt;try_default_hide function&lt;/a&gt;. I spent some days to solve this problem and did not found documentation about it.&lt;/p&gt;
+&lt;/div&gt;
+</content><category term="programming"></category><category term="funblocker"></category><category term="hack"></category></entry><entry><title>Funblocker: Clean Your Facebook Timeline</title><link href="https://iurisilv.io/2011/12/funblocker-clean-your-facebook-timeline.html" rel="alternate"></link><published>2011-12-03T00:00:00-02:00</published><updated>2011-12-03T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-12-03:/2011/12/funblocker-clean-your-facebook-timeline.html</id><summary type="html">&lt;p&gt;Facebook is a cool way to see what your friends are doing. Social network, that is what we want. But things does not work like we want all the time.&lt;/p&gt;
+&lt;p&gt;People create a lot of annoying profiles and pages to share/repost funny pictures and things like that. Most part …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Facebook is a cool way to see what your friends are doing. Social network, that is what we want. But things does not work like we want all the time.&lt;/p&gt;
+&lt;p&gt;People create a lot of annoying profiles and pages to share/repost funny pictures and things like that. Most part of these images are copied from other major sites, so I already saw it before. Also, Facebook invent all the time new ways to share things you do not want to see. Finally, my timeline was polluted by all these things.&lt;/p&gt;
+&lt;p&gt;A cruel solution is block all my friends sharing this content. Sometimes they did not even know they are sharing these trash. I don't want to do it, because, you know, I really like my friends, even though they are a bit stupid sometimes, so I need a better solution. Hey, Facebook, I want only content generated by my friends, not spams and cool-ish images.&lt;/p&gt;
+&lt;p&gt;I created &lt;a class="reference external" href="https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom"&gt;FunBlocker&lt;/a&gt;, a Chrome Extension to handle this problem, removing some posts I do not want to see in my timeline. Just right-click on the link and remove this post or click in a button on page hovercard. That is it. This way Ican spend more time doing what I want to do: just stalk my friends.&lt;/p&gt;
+&lt;p&gt;It was a personal tool, but friends begged for it, so I released it open source, mainly because I will never install an extension which can handle my Facebook data and I can not see what is happening in the background. So, &lt;a class="reference external" href="http://github.com/iurisilvio/FunBlocker"&gt;FunBlocker code is on GitHub&lt;/a&gt;.&lt;/p&gt;
+</content><category term="programming"></category><category term="funblocker"></category><category term="hack"></category></entry><entry><title>Google App Engine in a Bottle</title><link href="https://iurisilv.io/2011/05/google-app-engine-in-a-bottle.html" rel="alternate"></link><published>2011-05-29T00:00:00-03:00</published><updated>2011-05-29T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-05-29:/2011/05/google-app-engine-in-a-bottle.html</id><summary type="html">&lt;p&gt;First of all, you must know &lt;a class="reference external" href="http://bottlepy.org"&gt;bottle&lt;/a&gt; and &lt;a class="reference external" href="https://developers.google.com/appengine"&gt;Google App Engine&lt;/a&gt;. Both are awesome tools to any web project. They together make both even easier to use. This integration is easy but isn't too much documented.&lt;/p&gt;
+&lt;p&gt;Add &lt;tt class="docutils literal"&gt;bottle.py&lt;/tt&gt; to your source folder and create a &lt;tt class="docutils literal"&gt;helloworld.py&lt;/tt&gt; file with …&lt;/p&gt;</summary><content type="html">&lt;p&gt;First of all, you must know &lt;a class="reference external" href="http://bottlepy.org"&gt;bottle&lt;/a&gt; and &lt;a class="reference external" href="https://developers.google.com/appengine"&gt;Google App Engine&lt;/a&gt;. Both are awesome tools to any web project. They together make both even easier to use. This integration is easy but isn't too much documented.&lt;/p&gt;
+&lt;p&gt;Add &lt;tt class="docutils literal"&gt;bottle.py&lt;/tt&gt; to your source folder and create a &lt;tt class="docutils literal"&gt;helloworld.py&lt;/tt&gt; file with this content:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;google.appengine.ext.webapp&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;util&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;bottle&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;bottle&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;route&lt;/span&gt;
+
+&lt;span class="nd"&gt;@route&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;/&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;/:name&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;hello&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;World&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;Hello &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;name&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;debug&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="kc"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;run&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;server&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;gae&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="vm"&gt;__name__&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;__main__&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;main&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;In your &lt;tt class="docutils literal"&gt;app.yaml&lt;/tt&gt;, just send everything to your &lt;tt class="docutils literal"&gt;helloworld.py&lt;/tt&gt; app:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;application&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;sample-app&lt;/span&gt;
+&lt;span class="nt"&gt;version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;
+&lt;span class="nt"&gt;runtime&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;
+&lt;span class="nt"&gt;api_version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;
+
+&lt;span class="nt"&gt;handlers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;url&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;/.*&lt;/span&gt;
+  &lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;helloworld.py&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Run &lt;tt class="docutils literal"&gt;dev_appserver.py&lt;/tt&gt; to test (you already know how to do it if you read Getting Started).&lt;/p&gt;
+&lt;p&gt;It works nice with last Bottle (v0.9.1). All Google App Engine features are decoupled from webapp, so you can use database, user authentication and others with Bottle.&lt;/p&gt;
+</content><category term="programming"></category><category term="bottle"></category><category term="appengine"></category></entry><entry><title>Building Scilab to GSoC</title><link href="https://iurisilv.io/2011/04/building-scilab-to-gsoc.html" rel="alternate"></link><published>2011-04-28T00:00:00-03:00</published><updated>2011-04-28T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-04-28:/2011/04/building-scilab-to-gsoc.html</id><summary type="html">&lt;p&gt;My first task was build Scilab project. It is a huge project, and first time I did it I really didn't know how to do it. I just tried to build, checked the error message &lt;cite&gt;&amp;quot;some lib not found&amp;quot;&lt;/cite&gt;, installed that lib, tried to build again and again... dozen of …&lt;/p&gt;</summary><content type="html">&lt;p&gt;My first task was build Scilab project. It is a huge project, and first time I did it I really didn't know how to do it. I just tried to build, checked the error message &lt;cite&gt;&amp;quot;some lib not found&amp;quot;&lt;/cite&gt;, installed that lib, tried to build again and again... dozen of times.&lt;/p&gt;
+&lt;p&gt;After that, of course I researched about how to build it in a better way. It is really easy using Ubuntu. First of all, just clone Scilab repository with git. I used YaSp branch, but it works to master too. After checkout, build all dependencies (the trick part I didn't know):&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ apt-get build-dep scilab
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;In scilab directory, just configure and make project:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ ./configure
+$ make
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This post looks really simple, but it is my first post during GSoC and solved a big issue to me (build dependencies).&lt;/p&gt;
+</content><category term="programming"></category><category term="gsoc"></category></entry><entry><title>We Won Sercomtel University Contest</title><link href="https://iurisilv.io/2011/01/we-won-sercomtel-university-contest.html" rel="alternate"></link><published>2011-01-27T00:00:00-02:00</published><updated>2011-01-27T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-01-27:/2011/01/we-won-sercomtel-university-contest.html</id><summary type="html">&lt;p&gt;During the second half of 2010, I attended the Sercomtel University Contest in the apps category, developing an Android app to search for bus routes in Londrina city.&lt;/p&gt;
+&lt;p&gt;The project was presented in Sercomtel in december/2010 and we received the first prize. My team received BRL 5000 (divided in …&lt;/p&gt;</summary><content type="html">&lt;p&gt;During the second half of 2010, I attended the Sercomtel University Contest in the apps category, developing an Android app to search for bus routes in Londrina city.&lt;/p&gt;
+&lt;p&gt;The project was presented in Sercomtel in december/2010 and we received the first prize. My team received BRL 5000 (divided in parts based on how much which member was involved in the project) and a mobile phone to our teacher advisor &lt;a class="reference external" href="http://www.twitter.com/emguerra"&gt;Eduardo Guerra&lt;/a&gt;. Another team from &lt;a class="reference external" href="http://www.ita.br"&gt;my school (ITA)&lt;/a&gt; received the third prize in the games category.&lt;/p&gt;
+&lt;p&gt;You can take a look at &lt;a class="reference external" href="http://www.slideshare.net/iurisilvio/transita"&gt;Transita presentation&lt;/a&gt;. It was an awesome experience, using geohashing algorithms to optimize calculations and &lt;a class="reference external" href="https://developers.google.com/appengine"&gt;Google App Engine&lt;/a&gt; servers to host some &lt;a class="reference external" href="http://bottlepy.org"&gt;bottle&lt;/a&gt; based services.&lt;/p&gt;
+&lt;p&gt;I got involved in this contest because of &lt;a class="reference external" href="http://blogs.alphachannel.com.br/itabits/"&gt;ITABits&lt;/a&gt;, an alumni group learning about game development and other awesome things.&lt;/p&gt;
+&lt;p&gt;You can see below two pics of this app.&lt;/p&gt;
+&lt;img alt="transita map" class="align-center" src="https://iurisilv.io/images/transita/map.png" style="width: 164.0px; height: 243.0px;" /&gt;
+&lt;img alt="transita bus lines list" class="align-center" src="https://iurisilv.io/images/transita/list.png" style="width: 164.0px; height: 243.0px;" /&gt;
+&lt;p&gt;Some links about this achievement (in portuguese):&lt;/p&gt;
+&lt;ul class="simple"&gt;
+&lt;li&gt;&lt;a class="reference external" href="http://www.ita.br/online/2011/noticias11/itabits.htm"&gt;ALUNOS DO ITA CRIAM A ITAbits E SÃO PREMIADOS&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a class="reference external" href="http://www.planetasercomtel.com.br/cont/contFull.asp?categoria=105&amp;amp;nrseq=96705"&gt;Sercomtel Celular anuncia vencedores do concurso de games e aplicativos&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content><category term="programming"></category><category term="contest"></category></entry><entry><title>Cracking Captchas</title><link href="https://iurisilv.io/2010/10/cracking-captchas.html" rel="alternate"></link><published>2010-10-30T00:00:00-02:00</published><updated>2010-10-30T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2010-10-30:/2010/10/cracking-captchas.html</id><summary type="html">&lt;p&gt;During PythonBrasil[6], we discussed about cracking captchas. I already worked on it to automate some tasks with a stupid captcha. A lot of internet voting systems and forms security are based on captcha.&lt;/p&gt;
+&lt;img alt="Captcha" src="https://iurisilv.io/images/cracking-captchas/original.jpg" /&gt;
+&lt;p&gt;It is really easy to clean the image with some Python tools.&lt;/p&gt;
+&lt;img alt="Captcha cleaned" src="https://iurisilv.io/images/cracking-captchas/cleaned.jpg" /&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;convert_image&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;threshold …&lt;/span&gt;&lt;/pre&gt;&lt;/div&gt;</summary><content type="html">&lt;p&gt;During PythonBrasil[6], we discussed about cracking captchas. I already worked on it to automate some tasks with a stupid captcha. A lot of internet voting systems and forms security are based on captcha.&lt;/p&gt;
+&lt;img alt="Captcha" src="https://iurisilv.io/images/cracking-captchas/original.jpg" /&gt;
+&lt;p&gt;It is really easy to clean the image with some Python tools.&lt;/p&gt;
+&lt;img alt="Captcha cleaned" src="https://iurisilv.io/images/cracking-captchas/cleaned.jpg" /&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;convert_image&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;threshold&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;30&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;y&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;]):&lt;/span&gt;
+        &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;size&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;]):&lt;/span&gt;
+            &lt;span class="n"&gt;color_original&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;getpixel&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;
+            &lt;span class="n"&gt;color_bw&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="nb"&gt;max&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;color_original&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="n"&gt;threshold&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;255&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;255&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;255&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+            &lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;putpixel&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;color_bw&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;PIL&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;
+&lt;span class="n"&gt;image&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;open&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;captcha.jpg&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;convert_image&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;image&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;save&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;cleaned_captcha.tif&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;TIFF&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Now, using &lt;a class="reference external" href="http://code.google.com/p/pytesser/"&gt;pytesser&lt;/a&gt; (an OCR tool), I can just read the cleaned_captcha.tif file.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;pytesser&lt;/span&gt;
+&lt;span class="nb"&gt;print&lt;/span&gt; &lt;span class="n"&gt;image_file_to_string&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;cleaned_captcha.tif&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The result is &lt;tt class="docutils literal"&gt;LONMT&lt;/tt&gt;. Wrong! It should be &lt;tt class="docutils literal"&gt;LONMH&lt;/tt&gt;.&lt;/p&gt;
+&lt;p&gt;Just take a close look to the cleaned image. It has a black border, which cause some noise to pytesser. I removed this border and tried again. Now, the result is what I expected: &lt;tt class="docutils literal"&gt;LONMH&lt;/tt&gt;.&lt;/p&gt;
+&lt;p&gt;Of course some captchas are really difficult to crack, but a lot of sites are based in useless captchas which any robot can solve. It is a crafted work, but it can be really easy in some cases. The two major problems I had to solve other cases of these captcha are:&lt;/p&gt;
+&lt;ul class="simple"&gt;
+&lt;li&gt;OCR misunderstood lower and upper case letters. This captcha has only upper case letters, so I can just replace &lt;tt class="docutils literal"&gt;i&lt;/tt&gt; with &lt;tt class="docutils literal"&gt;L&lt;/tt&gt; for example.&lt;/li&gt;
+&lt;li&gt;OCR found two text lines in the image, so the output was in a wrong order. I solved this issue splitting the image in several images and reading one at a time.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;As a final note but unrelated note, &lt;a class="reference external" href="http://www.websearchsocial.com/should-you-use-a-captcha-spoiler-no"&gt;DO NOT USE CAPTCHAS&lt;/a&gt;.&lt;/p&gt;
+</content><category term="programming"></category><category term="python"></category><category term="hack"></category></entry><entry><title>Hello World!</title><link href="https://iurisilv.io/1987/09/hello-world.html" rel="alternate"></link><published>1987-09-22T08:00:00-03:00</published><updated>1987-09-22T08:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,1987-09-22:/1987/09/hello-world.html</id><content type="html">&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nb"&gt;print&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;Hello World!&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+</content><category term="misc"></category><category term="meta"></category></entry></feed>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"><channel><title>iurisilvio - cache</title><link>https://iurisilv.io/</link><description></description><lastBuildDate>Sun, 31 May 2015 00:00:00 -0300</lastBuildDate><item><title>Nginx quick configuration</title><link>https://iurisilv.io/2015/05/nginx-quick-configuration.html</link><description>&lt;p&gt;Nginx is an HTTP server with lots of features. The configuration is easy, but maybe you don't even know the feature exist.&lt;/p&gt;
+&lt;p&gt;I want to present some nginx features and give you some pointers to continue your research.&lt;/p&gt;
+&lt;div class="section" id="the-basics"&gt;
+&lt;h2&gt;The basics&lt;/h2&gt;
+&lt;p&gt;The basic usage of nginx is to make the reverse …&lt;/p&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Iuri de Silvio</dc:creator><pubDate>Sun, 31 May 2015 00:00:00 -0300</pubDate><guid isPermaLink="false">tag:iurisilv.io,2015-05-31:/2015/05/nginx-quick-configuration.html</guid><category>devops</category><category>nginx</category><category>cache</category><category>load balance</category></item></channel></rss>

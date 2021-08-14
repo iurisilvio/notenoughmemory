@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>iurisilvio - appengine</title><link href="https://iurisilv.io/" rel="alternate"></link><link href="https://iurisilv.io/feed/tag/appengine.feed/atom.xml" rel="self"></link><id>https://iurisilv.io/</id><updated>2011-05-29T00:00:00-03:00</updated><entry><title>Google App Engine in a Bottle</title><link href="https://iurisilv.io/2011/05/google-app-engine-in-a-bottle.html" rel="alternate"></link><published>2011-05-29T00:00:00-03:00</published><updated>2011-05-29T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-05-29:/2011/05/google-app-engine-in-a-bottle.html</id><summary type="html">&lt;p&gt;First of all, you must know &lt;a class="reference external" href="http://bottlepy.org"&gt;bottle&lt;/a&gt; and &lt;a class="reference external" href="https://developers.google.com/appengine"&gt;Google App Engine&lt;/a&gt;. Both are awesome tools to any web project. They together make both even easier to use. This integration is easy but isn't too much documented.&lt;/p&gt;
+&lt;p&gt;Add &lt;tt class="docutils literal"&gt;bottle.py&lt;/tt&gt; to your source folder and create a &lt;tt class="docutils literal"&gt;helloworld.py&lt;/tt&gt; file with …&lt;/p&gt;</summary><content type="html">&lt;p&gt;First of all, you must know &lt;a class="reference external" href="http://bottlepy.org"&gt;bottle&lt;/a&gt; and &lt;a class="reference external" href="https://developers.google.com/appengine"&gt;Google App Engine&lt;/a&gt;. Both are awesome tools to any web project. They together make both even easier to use. This integration is easy but isn't too much documented.&lt;/p&gt;
+&lt;p&gt;Add &lt;tt class="docutils literal"&gt;bottle.py&lt;/tt&gt; to your source folder and create a &lt;tt class="docutils literal"&gt;helloworld.py&lt;/tt&gt; file with this content:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;google.appengine.ext.webapp&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;util&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;bottle&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;bottle&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;route&lt;/span&gt;
+
+&lt;span class="nd"&gt;@route&lt;/span&gt;&lt;span class="p"&gt;([&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;/&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;/:name&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;hello&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;World&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;Hello &lt;/span&gt;&lt;span class="si"&gt;%s&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt; &lt;span class="o"&gt;%&lt;/span&gt; &lt;span class="n"&gt;name&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;main&lt;/span&gt;&lt;span class="p"&gt;():&lt;/span&gt;
+    &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;debug&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="kc"&gt;True&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;bottle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;run&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;server&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;gae&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="vm"&gt;__name__&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;__main__&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;main&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;In your &lt;tt class="docutils literal"&gt;app.yaml&lt;/tt&gt;, just send everything to your &lt;tt class="docutils literal"&gt;helloworld.py&lt;/tt&gt; app:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;application&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;sample-app&lt;/span&gt;
+&lt;span class="nt"&gt;version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;
+&lt;span class="nt"&gt;runtime&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;
+&lt;span class="nt"&gt;api_version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;
+
+&lt;span class="nt"&gt;handlers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+  &lt;span class="p p-Indicator"&gt;-&lt;/span&gt; &lt;span class="nt"&gt;url&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;/.*&lt;/span&gt;
+  &lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="l l-Scalar l-Scalar-Plain"&gt;helloworld.py&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Run &lt;tt class="docutils literal"&gt;dev_appserver.py&lt;/tt&gt; to test (you already know how to do it if you read Getting Started).&lt;/p&gt;
+&lt;p&gt;It works nice with last Bottle (v0.9.1). All Google App Engine features are decoupled from webapp, so you can use database, user authentication and others with Bottle.&lt;/p&gt;
+</content><category term="programming"></category><category term="bottle"></category><category term="appengine"></category></entry></feed>

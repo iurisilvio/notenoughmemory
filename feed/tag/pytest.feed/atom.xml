@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>iurisilvio - pytest</title><link href="https://iurisilv.io/" rel="alternate"></link><link href="https://iurisilv.io/feed/tag/pytest.feed/atom.xml" rel="self"></link><id>https://iurisilv.io/</id><updated>2021-03-08T08:00:00-03:00</updated><entry><title>Faster parallel pytest-django</title><link href="https://iurisilv.io/2021/03/faster-parallel-pytest-django.html" rel="alternate"></link><published>2021-03-08T08:00:00-03:00</published><updated>2021-03-08T08:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2021-03-08:/2021/03/faster-parallel-pytest-django.html</id><summary type="html">&lt;p&gt;We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.&lt;/p&gt;
+&lt;p&gt;Unfortunately our CI/CD was really slow after this change.&lt;/p&gt;
+&lt;p&gt;I discovered parallel &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; do their setup different than Django
+unittests. Django create a template database and copy …&lt;/p&gt;</summary><content type="html">&lt;p&gt;We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.&lt;/p&gt;
+&lt;p&gt;Unfortunately our CI/CD was really slow after this change.&lt;/p&gt;
+&lt;p&gt;I discovered parallel &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; do their setup different than Django
+unittests. Django create a template database and copy it to every test node,
+&lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; create one database per node. Running this setup with migrations
+took more than 2 minutes just to have the database created.&lt;/p&gt;
+&lt;p&gt;This is a problem mostly for CI/CD, because local you can run with &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;--reuse-db&lt;/span&gt;&lt;/tt&gt;
+and the overhead is minimal, only when you have database migrations.&lt;/p&gt;
+&lt;p&gt;I wanted to fix this in &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt;, but I discovered it is difficult because
+pytest-xdist don't have a global setup and teardown.&lt;/p&gt;
+&lt;p&gt;Now I have a small hack, working great so far. This is the script running our
+tests:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;./manage.py shell -c &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+&lt;span class="s2"&gt;from django.test.utils import setup_databases&lt;/span&gt;
+&lt;span class="s2"&gt;from xdist.plugin import pytest_xdist_auto_num_workers&lt;/span&gt;
+&lt;span class="s2"&gt;setup_databases(verbosity=True, interactive=False, parallel=pytest_xdist_auto_num_workers())&lt;/span&gt;
+&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+pytest --reuse-db -n auto
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Django unittests generate names like &lt;tt class="docutils literal"&gt;test_yourdb_1&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_2&lt;/tt&gt; and
+&lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; generate names like &lt;tt class="docutils literal"&gt;test_yourdb_gw0&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_gw1&lt;/tt&gt;, their
+names don't match, I had to make a fixture to monkey patch their behaviors.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;pytest_django.fixtures&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;_set_suffix_to_test_databases&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;pytest_django.lazy_django&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;skip_if_no_django&lt;/span&gt;
+
+&lt;span class="c1"&gt;# Original code: https://github.com/pytest-dev/pytest-django/blob/bd2ae62968aaf97c6efc7e02ff77ba6160865435/pytest_django/fixtures.py#L46&lt;/span&gt;
+&lt;span class="nd"&gt;@pytest&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;fixture&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;scope&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;session&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;django_db_modify_db_settings_xdist_suffix&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;skip_if_no_django&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+    &lt;span class="n"&gt;xdist_suffix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;getattr&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;request&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;config&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;workerinput&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="p"&gt;{})&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;get&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;workerid&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;xdist_suffix&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+        &lt;span class="c1"&gt;# &amp;#39;gw0&amp;#39; -&amp;gt; &amp;#39;1&amp;#39;, &amp;#39;gw1&amp;#39; -&amp;gt; &amp;#39;2&amp;#39;, ...&lt;/span&gt;
+        &lt;span class="n"&gt;suffix&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="nb"&gt;str&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;int&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;xdist_suffix&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;replace&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;gw&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;_set_suffix_to_test_databases&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;suffix&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;suffix&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;I tried to make a pull request to &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt;, but this issue exists
+because pytest-xdist don't have hooks to run before and after every node.&lt;/p&gt;
+</content><category term="programming"></category><category term="python"></category><category term="django"></category><category term="pytest"></category></entry></feed>

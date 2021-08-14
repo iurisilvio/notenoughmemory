@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="generator" content="Pelican" />
+        <title>iurisilvio - noob</title>
+        <link rel="stylesheet" href="../theme/css/main.css" />
+        <link href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="iurisilvio Atom Feed" />
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="../">iurisilvio</a></h1>
+                <nav><ul>
+                    <li><a href="../category/devops.html">devops</a></li>
+                    <li><a href="../category/issue.html">issue</a></li>
+                    <li><a href="../category/misc.html">misc</a></li>
+                    <li><a href="../category/programming.html">programming</a></li>
+                    <li><a href="../category/stats.html">stats</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="../2012/11/wordpress-you-do-not-have-sufficient-permissions-to-access-this-page.html">Wordpress: &quot;You do not have sufficient permissions to access this page.&quot;</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2012-11-06T00:00:00-02:00">
+                Published: Tue 06 November 2012
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/issue.html">issue</a>.</p>
+<p>tags: <a href="../tag/wordpress.html">wordpress</a> <a href="../tag/noob.html">noob</a> </p>
+</footer><!-- /.post-info --><p>After I migrate my blog to my production environment, I was not able to login in <tt class="docutils literal"><span class="pre">/wp-admin/</span></tt>, receiving a quick message even in debug mode:</p>
+<p><tt class="docutils literal">&quot;You do not have sufficient permissions to access this page.&quot;</tt></p>
+<p>Ok, I just copied my database and my code, just changing configurations. <a class="reference external" href="https://www.google.com/webhpq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22&amp;oq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22">Google have a lot of results about this issue</a>, but it is not a simple problem. This message have a lot of meanings, maybe you just don't have access to database.</p>
+<p>I used almost a day reading Google results, but no one solved my problem. Of course, after I decided to stop, I get my <tt class="docutils literal"><span class="pre">wp-config.php</span></tt> files (development and production) and diffed then (<a class="reference external" href="http://www.quickdiff.com">http://www.quickdiff.com</a> is awesome).</p>
+<div class="highlight"><pre><span></span><span class="gd">- $table_prefix = &#39;wpProject_&#39;;</span>
+<span class="gi">+ $table_prefix = &#39;wpproject_&#39;;</span>
+</pre></div>
+<p>If you know a bit about MySQL, you know tables are not case sensitive in Windows. Wordpress don't care about that and don't give you any hint. So, if you found this post because you had a similar problem, go check your configurations.</p>
+<p>Just to make it obvious to anyone trying to solve the problem: <strong>TABLE PREFIX IS CASE SENSITIVE</strong>. Of course, maybe it is not the answer you need, because the &quot;error message&quot; does not give you much information.</p>
+<p>There are <a href="../2012/11/wordpress-you-do-not-have-sufficient-permissions-to-access-this-page.html#disqus_thread">comments</a>.</p>                </article>
+            </aside><!-- /#featured -->
+        <section id="extras" class="body">
+                <div class="blogroll">
+                        <h2>links</h2>
+                        <ul>
+                            <li><a href="https://ceps.io">ceps.io</a></li>
+                            <li><a href="https://www.postmon.com.br">postmon</a></li>
+                            <li><a href="https://code.djangoproject.com/query?owner=iurisilvio&or&reporter=iurisilvio&col=id&col=summary&col=owner&col=status&col=reporter&col=type&order=priority">Django contributor</a></li>
+                            <li><a href="https://github.com/iurisilvio/bottle-sqlalchemy">bottle-sqlalchemy</a></li>
+                        </ul>
+                </div><!-- /.blogroll -->
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                            <li><a href="https://twitter.com/iurisilvio">Twitter</a></li>
+                            <li><a href="https://github.com/iurisilvio">GitHub</a></li>
+                            <li><a href="http://br.linkedin.com/in/iurisilvio">LinkedIn</a></li>
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a href="https://www.python.org/">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+    <script type="text/javascript">
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-33399692-1', 'auto');
+    ga('send', 'pageview');
+    </script>
+<script type="text/javascript">
+    var disqus_shortname = 'notenoughmemory';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="generator" content="Pelican" />
+        <title>Google Analytics memory leak in Chrome</title>
+        <link rel="stylesheet" href="../../theme/css/main.css" />
+        <link href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="iurisilvio Atom Feed" />
+        <meta name="description" content="In last days, after I upgraded to Ubuntu 12.10 (it may be related with the issue or not), I experienced a weird slowness in the whole OS. Using..." />
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="../../">iurisilvio</a></h1>
+                <nav><ul>
+                    <li><a href="../../category/devops.html">devops</a></li>
+                    <li class="active"><a href="../../category/issue.html">issue</a></li>
+                    <li><a href="../../category/misc.html">misc</a></li>
+                    <li><a href="../../category/programming.html">programming</a></li>
+                    <li><a href="../../category/stats.html">stats</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h1 class="entry-title">
+        <a href="../../2012/11/google-analytics-memory-leak-in-chrome.html" rel="bookmark"
+           title="Permalink to Google Analytics memory leak in Chrome">Google Analytics memory leak in Chrome</a></h1>
+<a href="https://twitter.com/share" class="twitter-share-button" data-count="horizontal" data-via="iurisilvio">Tweet</a><script type="text/javascript" src="https://platform.twitter.com/widgets.js"></script>
+    </header>
+
+    <div class="entry-content">
+<footer class="post-info">
+        <abbr class="published" title="2012-11-05T00:00:00-02:00">
+                Published: Mon 05 November 2012
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../../category/issue.html">issue</a>.</p>
+<p>tags: <a href="../../tag/chrome.html">chrome</a> </p>
+</footer><!-- /.post-info -->      <p>In last days, after I upgraded to Ubuntu 12.10 (it may be related with the issue or not), I experienced a weird slowness in the whole OS. Using <tt class="docutils literal">top</tt>, I found a Chrome tab consuming around 1.2GB.</p>
+<p>It was a tab with a Google Analytics realtime view. I keep this tab open almost all the time in a machine, so I know it is a memory consuming site, but I never saw something like that. I re-opened the same tab, which started with ~100MB and in a few hours it crashed again after consuming all virtual memory.</p>
+<p>So far it was just a memory consuming application, but something is really wrong with Chrome or with Google Analytics. In both cases, it is Google fault.</p>
+<p>I found <a class="reference external" href="http://thepileof.blogspot.com.br/2012/01/google-chrome-memory-leak-discovered.html">another report</a>, but it happened only after a week with Google Analytics realtime running.</p>
+<p>I'll report this issue to Chromium project and I'll try to profile this tab with Chrome Developer Tools to get more information about the problem.</p>
+<p>Take a look at my Google Chrome Task Manager:</p>
+<img alt="Chrome/Google Analytics memory leak" src="../../images/google-analytics-memory-leak-in-chrome/task-manager.png" style="width: 400px;" />
+
+    </div><!-- /.entry-content -->
+    <div class="comments">
+      <h2>Comments !</h2>
+      <div id="disqus_thread"></div>
+      <script type="text/javascript">
+        var disqus_shortname = 'notenoughmemory';
+        var disqus_identifier = '2012/11/google-analytics-memory-leak-in-chrome.html';
+        var disqus_url = '../../2012/11/google-analytics-memory-leak-in-chrome.html';
+        (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//notenoughmemory.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+      </script>
+      <noscript>Please enable JavaScript to view the comments.</noscript>
+    </div>
+
+  </article>
+</section>
+        <section id="extras" class="body">
+                <div class="blogroll">
+                        <h2>links</h2>
+                        <ul>
+                            <li><a href="https://ceps.io">ceps.io</a></li>
+                            <li><a href="https://www.postmon.com.br">postmon</a></li>
+                            <li><a href="https://code.djangoproject.com/query?owner=iurisilvio&or&reporter=iurisilvio&col=id&col=summary&col=owner&col=status&col=reporter&col=type&order=priority">Django contributor</a></li>
+                            <li><a href="https://github.com/iurisilvio/bottle-sqlalchemy">bottle-sqlalchemy</a></li>
+                        </ul>
+                </div><!-- /.blogroll -->
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                            <li><a href="https://twitter.com/iurisilvio">Twitter</a></li>
+                            <li><a href="https://github.com/iurisilvio">GitHub</a></li>
+                            <li><a href="http://br.linkedin.com/in/iurisilvio">LinkedIn</a></li>
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a href="https://www.python.org/">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+    <script type="text/javascript">
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-33399692-1', 'auto');
+    ga('send', 'pageview');
+    </script>
+<script type="text/javascript">
+    var disqus_shortname = 'notenoughmemory';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+</body>
+</html>

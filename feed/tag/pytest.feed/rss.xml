@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"><channel><title>iurisilvio - pytest</title><link>https://iurisilv.io/</link><description></description><lastBuildDate>Mon, 08 Mar 2021 08:00:00 -0300</lastBuildDate><item><title>Faster parallel pytest-django</title><link>https://iurisilv.io/2021/03/faster-parallel-pytest-django.html</link><description>&lt;p&gt;We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.&lt;/p&gt;
+&lt;p&gt;Unfortunately our CI/CD was really slow after this change.&lt;/p&gt;
+&lt;p&gt;I discovered parallel &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; do their setup different than Django
+unittests. Django create a template database and copy …&lt;/p&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Iuri de Silvio</dc:creator><pubDate>Mon, 08 Mar 2021 08:00:00 -0300</pubDate><guid isPermaLink="false">tag:iurisilv.io,2021-03-08:/2021/03/faster-parallel-pytest-django.html</guid><category>programming</category><category>python</category><category>django</category><category>pytest</category></item></channel></rss>

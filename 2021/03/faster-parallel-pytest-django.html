@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="generator" content="Pelican" />
+        <title>Faster parallel pytest-django</title>
+        <link rel="stylesheet" href="../../theme/css/main.css" />
+        <link href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="iurisilvio Atom Feed" />
+        <meta name="description" content="We at Buser recently migrated from Django unittests to pytest. It is amazing how much you can improve your tests with pytest. Unfortunately our..." />
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="../../">iurisilvio</a></h1>
+                <nav><ul>
+                    <li><a href="../../category/devops.html">devops</a></li>
+                    <li><a href="../../category/issue.html">issue</a></li>
+                    <li><a href="../../category/misc.html">misc</a></li>
+                    <li class="active"><a href="../../category/programming.html">programming</a></li>
+                    <li><a href="../../category/stats.html">stats</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h1 class="entry-title">
+        <a href="../../2021/03/faster-parallel-pytest-django.html" rel="bookmark"
+           title="Permalink to Faster parallel pytest-django">Faster parallel pytest-django</a></h1>
+<a href="https://twitter.com/share" class="twitter-share-button" data-count="horizontal" data-via="iurisilvio">Tweet</a><script type="text/javascript" src="https://platform.twitter.com/widgets.js"></script>
+    </header>
+
+    <div class="entry-content">
+<footer class="post-info">
+        <abbr class="published" title="2021-03-08T08:00:00-03:00">
+                Published: Mon 08 March 2021
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../../tag/python.html">python</a> <a href="../../tag/django.html">django</a> <a href="../../tag/pytest.html">pytest</a> </p>
+</footer><!-- /.post-info -->      <p>We at Buser recently migrated from Django unittests to pytest. It is amazing
+how much you can improve your tests with pytest.</p>
+<p>Unfortunately our CI/CD was really slow after this change.</p>
+<p>I discovered parallel <tt class="docutils literal"><span class="pre">pytest-django</span></tt> do their setup different than Django
+unittests. Django create a template database and copy it to every test node,
+<tt class="docutils literal"><span class="pre">pytest-django</span></tt> create one database per node. Running this setup with migrations
+took more than 2 minutes just to have the database created.</p>
+<p>This is a problem mostly for CI/CD, because local you can run with <tt class="docutils literal"><span class="pre">--reuse-db</span></tt>
+and the overhead is minimal, only when you have database migrations.</p>
+<p>I wanted to fix this in <tt class="docutils literal"><span class="pre">pytest-django</span></tt>, but I discovered it is difficult because
+pytest-xdist don't have a global setup and teardown.</p>
+<p>Now I have a small hack, working great so far. This is the script running our
+tests:</p>
+<div class="highlight"><pre><span></span>./manage.py shell -c <span class="s2">&quot;</span>
+<span class="s2">from django.test.utils import setup_databases</span>
+<span class="s2">from xdist.plugin import pytest_xdist_auto_num_workers</span>
+<span class="s2">setup_databases(verbosity=True, interactive=False, parallel=pytest_xdist_auto_num_workers())</span>
+<span class="s2">&quot;</span>
+pytest --reuse-db -n auto
+</pre></div>
+<p>Django unittests generate names like <tt class="docutils literal">test_yourdb_1</tt>, <tt class="docutils literal">test_yourdb_2</tt> and
+<tt class="docutils literal"><span class="pre">pytest-django</span></tt> generate names like <tt class="docutils literal">test_yourdb_gw0</tt>, <tt class="docutils literal">test_yourdb_gw1</tt>, their
+names don't match, I had to make a fixture to monkey patch their behaviors.</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pytest_django.fixtures</span> <span class="kn">import</span> <span class="n">_set_suffix_to_test_databases</span>
+<span class="kn">from</span> <span class="nn">pytest_django.lazy_django</span> <span class="kn">import</span> <span class="n">skip_if_no_django</span>
+
+<span class="c1"># Original code: https://github.com/pytest-dev/pytest-django/blob/bd2ae62968aaf97c6efc7e02ff77ba6160865435/pytest_django/fixtures.py#L46</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">django_db_modify_db_settings_xdist_suffix</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="n">skip_if_no_django</span><span class="p">()</span>
+
+    <span class="n">xdist_suffix</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;workerinput&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;workerid&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">xdist_suffix</span><span class="p">:</span>
+        <span class="c1"># &#39;gw0&#39; -&gt; &#39;1&#39;, &#39;gw1&#39; -&gt; &#39;2&#39;, ...</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">xdist_suffix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;gw&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">_set_suffix_to_test_databases</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="n">suffix</span><span class="p">)</span>
+</pre></div>
+<p>I tried to make a pull request to <tt class="docutils literal"><span class="pre">pytest-django</span></tt>, but this issue exists
+because pytest-xdist don't have hooks to run before and after every node.</p>
+
+    </div><!-- /.entry-content -->
+    <div class="comments">
+      <h2>Comments !</h2>
+      <div id="disqus_thread"></div>
+      <script type="text/javascript">
+        var disqus_shortname = 'notenoughmemory';
+        var disqus_identifier = '2021/03/faster-parallel-pytest-django.html';
+        var disqus_url = '../../2021/03/faster-parallel-pytest-django.html';
+        (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//notenoughmemory.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+      </script>
+      <noscript>Please enable JavaScript to view the comments.</noscript>
+    </div>
+
+  </article>
+</section>
+        <section id="extras" class="body">
+                <div class="blogroll">
+                        <h2>links</h2>
+                        <ul>
+                            <li><a href="https://ceps.io">ceps.io</a></li>
+                            <li><a href="https://www.postmon.com.br">postmon</a></li>
+                            <li><a href="https://code.djangoproject.com/query?owner=iurisilvio&or&reporter=iurisilvio&col=id&col=summary&col=owner&col=status&col=reporter&col=type&order=priority">Django contributor</a></li>
+                            <li><a href="https://github.com/iurisilvio/bottle-sqlalchemy">bottle-sqlalchemy</a></li>
+                        </ul>
+                </div><!-- /.blogroll -->
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                            <li><a href="https://twitter.com/iurisilvio">Twitter</a></li>
+                            <li><a href="https://github.com/iurisilvio">GitHub</a></li>
+                            <li><a href="http://br.linkedin.com/in/iurisilvio">LinkedIn</a></li>
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a href="https://www.python.org/">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+    <script type="text/javascript">
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-33399692-1', 'auto');
+    ga('send', 'pageview');
+    </script>
+<script type="text/javascript">
+    var disqus_shortname = 'notenoughmemory';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="generator" content="Pelican" />
+        <title>iurisilvio - load balance</title>
+        <link rel="stylesheet" href="../theme/css/main.css" />
+        <link href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="iurisilvio Atom Feed" />
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="../">iurisilvio</a></h1>
+                <nav><ul>
+                    <li><a href="../category/devops.html">devops</a></li>
+                    <li><a href="../category/issue.html">issue</a></li>
+                    <li><a href="../category/misc.html">misc</a></li>
+                    <li><a href="../category/programming.html">programming</a></li>
+                    <li><a href="../category/stats.html">stats</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="../2015/05/nginx-quick-configuration.html">Nginx quick configuration</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2015-05-31T00:00:00-03:00">
+                Published: Sun 31 May 2015
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/devops.html">devops</a>.</p>
+<p>tags: <a href="../tag/nginx.html">nginx</a> <a href="../tag/cache.html">cache</a> <a href="../tag/load-balance.html">load balance</a> </p>
+</footer><!-- /.post-info --><p>Nginx is an HTTP server with lots of features. The configuration is easy, but maybe you don't even know the feature exist.</p>
+<p>I want to present some nginx features and give you some pointers to continue your research.</p>
+<div class="section" id="the-basics">
+<h2>The basics</h2>
+<p>The basic usage of nginx is to make the reverse proxy to your application. Nginx listen to port <tt class="docutils literal">80</tt> waiting for requests and manage
+the connections, passing the requests to your upstream application server.</p>
+<pre class="code nginx literal-block">
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">server_name</span> <span class="s">www.yoursite.com</span><span class="p">;</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+        <span class="kn">proxy_pass</span> <span class="s">http://localhost:8080</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre>
+<p>The <tt class="docutils literal">proxy_pass</tt> directive proxy the request as HTTP to your application listening port <tt class="docutils literal">8080</tt>.</p>
+<p>You can use <tt class="docutils literal">uwsgi_pass</tt> to make nginx convert the HTTP to a WSGI request and send it to your WSGI application.</p>
+<pre class="code nginx literal-block">
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">server_name</span> <span class="s">www.yoursite.com</span><span class="p">;</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+        <span class="kn">include</span> <span class="s">uwsgi_params</span><span class="p">;</span>
+        <span class="kn">uwsgi_pass</span> <span class="n">localhost</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre>
+<p>Most features work for HTTP and uWSGI proxy, with some small configuration changes.</p>
+</div>
+<div class="section" id="ssl-termination">
+<h2>SSL Termination</h2>
+<p>Nginx terminate the SSL connection and send it to your application as plain HTTP.</p>
+<pre class="code nginx literal-block">
+<span class="k">ssl_certificate</span> <span class="s">/opt/ssl/www.yoursite.com.crt</span><span class="p">;</span>
+<span class="k">ssl_certificate_key</span> <span class="s">/opt/ssl/www.yoursite.com.key</span><span class="p">;</span>
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">server_name</span> <span class="s">www.yoursite.com</span><span class="p">;</span>
+    <span class="kn">listen</span> <span class="mi">443</span> <span class="s">ssl</span><span class="p">;</span>
+    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+        <span class="kn">proxy_pass</span> <span class="s">http://localhost:8080</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre>
+<p>If you want a HTTPS only website, add another server block to redirect the HTTP traffic to HTTPS.</p>
+<pre class="code nginx literal-block">
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    <span class="kn">server_name</span> <span class="s">www.yoursite.com</span><span class="p">;</span>
+    <span class="kn">return</span> <span class="mi">301</span> <span class="s">https://</span><span class="nv">$host$request_uri</span><span class="p">;</span>
+<span class="p">}</span>
+</pre>
+</div>
+<div class="section" id="static-files">
+<h2>Static files</h2>
+<p>Nginx serve some thousands of static files per second, without hiccups. Do not make your application serve static files, like images and javascripts. Your application is slow, maybe it'll re-render the same asset for each request.</p>
+<pre class="code nginx literal-block">
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">server_name</span> <span class="s">www.yoursite.com</span><span class="p">;</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    <span class="kn">root</span> <span class="s">/some/path</span><span class="p">;</span>
+    <span class="kn">location</span> <span class="s">/static/</span> <span class="p">{</span>
+        <span class="kn">try_files</span> <span class="s">/generated/</span><span class="nv">$uri</span> <span class="s">/cache/</span><span class="nv">$uri</span> <span class="s">&#64;myapp</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+        <span class="kn">try_files</span> <span class="nv">$uri</span> <span class="s">&#64;myapp</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kn">location</span> <span class="s">&#64;myapp</span> <span class="p">{</span>
+        <span class="kn">include</span> <span class="s">uwsgi_params</span><span class="p">;</span>
+        <span class="kn">uwsgi_pass</span> <span class="n">localhost</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre>
+<p>The <tt class="docutils literal">try_files</tt> directive in <tt class="docutils literal">/static/</tt> block will check <tt class="docutils literal">/some/path/generated/static/</tt> and <tt class="docutils literal">/some/path/cache/static/</tt> for your requested file and if it does not exist, send the request to your application.</p>
+<p>You can change the last <tt class="docutils literal">try_files</tt> parameter with <tt class="docutils literal">=404</tt> to answer with a 404 instead of pass the request to application.</p>
+</div>
+<div class="section" id="load-balancing">
+<h2>Load balancing</h2>
+<p>If you want a high available application, nginx can be your load balancer to distribute the load and handle gracefully server failures.</p>
+<pre class="code nginx literal-block">
+<span class="k">upstream</span> <span class="s">yourapp</span> <span class="p">{</span>
+    <span class="kn">server</span> <span class="s">http://localhost:8080</span> <span class="s">weight=5</span><span class="p">;</span>
+    <span class="kn">server</span> <span class="s">http://localhost:8081</span><span class="p">;</span>
+    <span class="kn">server</span> <span class="s">http://example.com:8080</span> <span class="s">backup</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">server_name</span> <span class="s">www.yoursite.com</span><span class="p">;</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+        <span class="kn">proxy_pass</span> <span class="s">yourapp</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre>
+<p>Nginx send the request to your <tt class="docutils literal">yourapp</tt> upstream, choosing one server in a weighted round robin way. 5 requests to the first server, 1 request to the second server and so on. If your servers are down, it sends the request to your backup server.</p>
+<p>If one server fail to answer or give an HTTP error, nginx send the request to the next server. No additional configuration needed.</p>
+</div>
+<div class="section" id="caching">
+<h2>Caching</h2>
+<p>Some pages are almost static and you don't want it rendering all the time. Nginx can help you serving this content. Configure nginx to cache the page for 10 minutes.</p>
+<pre class="code nginx literal-block">
+<span class="k">uwsgi_cache_path</span> <span class="s">/tmp/myapp/content/</span> <span class="s">keys_zone=myapp-content:10m</span>
+                 <span class="s">loader_threshold=300</span> <span class="s">loader_files=200</span> <span class="s">max_size=100m</span> <span class="s">levels=1:2</span><span class="p">;</span>
+<span class="k">uwsgi_cache_valid</span> <span class="mi">200</span> <span class="mi">301</span> <span class="mi">302</span> <span class="mi">404</span> <span class="mi">10m</span><span class="p">;</span>
+<span class="k">uwsgi_cache_key</span> <span class="nv">$host$request_uri</span><span class="p">;</span>
+
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">server_name</span> <span class="s">www.yoursite.com</span><span class="p">;</span>
+    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+    <span class="kn">location</span> <span class="s">/content/</span> <span class="p">{</span>
+        <span class="kn">uwsgi_cache</span> <span class="s">yourcache</span><span class="p">;</span>
+        <span class="kn">uwsgi_ignore_headers</span> <span class="s">Set-Cookie</span><span class="p">;</span>
+        <span class="kn">uwsgi_hide_header</span> <span class="s">Set-Cookie</span><span class="p">;</span>
+        <span class="kn">add_header</span> <span class="s">X-Cache</span> <span class="nv">$upstream_cache_status</span><span class="p">;</span>
+        <span class="kn">include</span> <span class="s">uwsgi_params</span><span class="p">;</span>
+        <span class="kn">uwsgi_pass</span> <span class="n">localhost</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+        <span class="kn">include</span> <span class="s">uwsgi_params</span><span class="p">;</span>
+        <span class="kn">uwsgi_pass</span> <span class="n">localhost</span><span class="p">:</span><span class="mi">8080</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre>
+</div>
+<div class="section" id="dynamic-upstreams">
+<h2>Dynamic upstreams</h2>
+<p>The commercial subscription has this feature built-in, but you probably don't want one. It costs some thousand dollars per server.</p>
+<p>The simple way to do it is update the configuration file, adding/removing upstream servers. The <tt class="docutils literal">nginx reload</tt> command update the configuration without
+downtime.</p>
+</div>
+<div class="section" id="conclusion">
+<h2>Conclusion</h2>
+<p>These snippets are just the basics. Use it to understand how it can help you, but check the docs to learn all the features. Nginx is really powerful and can help you to simplify and improve your system architecture.</p>
+<p>Feel free to contact me if you want some help setting up your nginx server. I'm not a system administrator, but I learnt some things about it.</p>
+</div>
+<p>There are <a href="../2015/05/nginx-quick-configuration.html#disqus_thread">comments</a>.</p>                </article>
+            </aside><!-- /#featured -->
+        <section id="extras" class="body">
+                <div class="blogroll">
+                        <h2>links</h2>
+                        <ul>
+                            <li><a href="https://ceps.io">ceps.io</a></li>
+                            <li><a href="https://www.postmon.com.br">postmon</a></li>
+                            <li><a href="https://code.djangoproject.com/query?owner=iurisilvio&or&reporter=iurisilvio&col=id&col=summary&col=owner&col=status&col=reporter&col=type&order=priority">Django contributor</a></li>
+                            <li><a href="https://github.com/iurisilvio/bottle-sqlalchemy">bottle-sqlalchemy</a></li>
+                        </ul>
+                </div><!-- /.blogroll -->
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                            <li><a href="https://twitter.com/iurisilvio">Twitter</a></li>
+                            <li><a href="https://github.com/iurisilvio">GitHub</a></li>
+                            <li><a href="http://br.linkedin.com/in/iurisilvio">LinkedIn</a></li>
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a href="https://www.python.org/">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+    <script type="text/javascript">
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-33399692-1', 'auto');
+    ga('send', 'pageview');
+    </script>
+<script type="text/javascript">
+    var disqus_shortname = 'notenoughmemory';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+</body>
+</html>

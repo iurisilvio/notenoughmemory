@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="utf-8" />
+        <meta name="generator" content="Pelican" />
+        <title>iurisilvio - hack</title>
+        <link rel="stylesheet" href="../theme/css/main.css" />
+        <link href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="iurisilvio Atom Feed" />
+</head>
+
+<body id="index" class="home">
+        <header id="banner" class="body">
+                <h1><a href="../">iurisilvio</a></h1>
+                <nav><ul>
+                    <li><a href="../category/devops.html">devops</a></li>
+                    <li><a href="../category/issue.html">issue</a></li>
+                    <li><a href="../category/misc.html">misc</a></li>
+                    <li><a href="../category/programming.html">programming</a></li>
+                    <li><a href="../category/stats.html">stats</a></li>
+                </ul></nav>
+        </header><!-- /#banner -->
+
+            <aside id="featured" class="body">
+                <article>
+                    <h1 class="entry-title"><a href="../2012/07/aspnet-maskededit-is-broken-in-webkit.html">ASP.NET MaskedEdit is broken in WebKit</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2012-07-19T00:00:00-03:00">
+                Published: Thu 19 July 2012
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../tag/csharp.html">csharp</a> <a href="../tag/hack.html">hack</a> <a href="../tag/issue.html">issue</a> </p>
+</footer><!-- /.post-info --><p>Ajax Control Tookit is one of an important library in .NET world. It handles a lot of dynamic JavaScript things you do not want to do alone.</p>
+<p>They have a component called MaskedEdit to handle a input formatted text like <tt class="docutils literal">__/__/__</tt>. Take a look at the <a class="reference external" href="http://www.asp.net/ajaxLibrary/AjaxControlToolkitSampleSite/MaskedEdit/MaskedEdit.aspx">MaskedEdit example</a>. Oh, if you use Chrome or Safari, it does not work like you expect with delete, backspace and other &quot;special&quot; keys. Cool, han?</p>
+<p>This bug is from 2008, documented in <a class="reference external" href="http://ajaxcontroltoolkit.codeplex.com/workitem/26978">issue 26978</a>, <a class="reference external" href="http://ajaxcontroltoolkit.codeplex.com/workitem/17166">issue 17166</a> and <a class="reference external" href="http://code.google.com/p/chromium/issues/detail?id=3341">chromium issue 3341 too</a>. These links have easy solutions: just take the code, change a couple of lines and recompile everything, but it was never merged or released.</p>
+<p>I do not want to fork the code to change two lines, but I can just hack around JavaScript and we are fine. If you opened the MaskedEdit example in Chrome, run the code below in JavaScript console and try again. I took some pieces of code around the internet and wrote my own to work with normal and minified versions of current version of the lib.</p>
+<pre class="code javascript literal-block">
+<span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">Sys</span><span class="p">.</span><span class="nx">Browser</span><span class="p">.</span><span class="nx">agent</span> <span class="o">==</span> <span class="nx">Sys</span><span class="p">.</span><span class="nx">Browser</span><span class="p">.</span><span class="nx">Safari</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// don't worry, to this lib Chrome is Safari
+</span>    <span class="kd">function</span> <span class="nx">funcbody</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">s</span> <span class="o">=</span> <span class="nx">f</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span>
+      <span class="k">return</span> <span class="nx">s</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">'{'</span><span class="p">));</span>
+    <span class="p">}</span>
+    <span class="k">try</span> <span class="p">{</span> <span class="nx">p</span> <span class="o">=</span> <span class="nx">Sys</span><span class="p">.</span><span class="nx">Extended</span><span class="p">.</span><span class="nx">UI</span><span class="p">.</span><span class="nx">MaskedEditBehavior</span><span class="p">.</span><span class="nx">prototype</span><span class="p">;</span> <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span> <span class="nx">p</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">p</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">p</span><span class="p">.</span><span class="nx">_ExecuteNav</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Function</span><span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="s2">&quot;h&quot;</span><span class="p">,</span>
+        <span class="s1">'var c=-1,e=&quot; &quot;,a=&quot;&quot;,b=false,d=true,p=&quot;keypress&quot;,s=&quot;keydown&quot;,evt=g,scanCode=h;'</span> <span class="o">+</span>
+        <span class="nx">funcbody</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">_ExecuteNav</span><span class="p">)</span>
+          <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(g\.type==p\)if\(h==8\))/</span><span class="p">,</span> <span class="s2">&quot;g.type==s||$1&quot;</span><span class="p">)</span>
+          <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(== Sys\.Browser\.InternetExplorer \|\| evt\.type == \&quot;keypress\&quot;)/</span><span class="p">,</span>
+                   <span class="s2">&quot;$1 || evt.type == \&quot;keydown\&quot;&quot;</span><span class="p">));</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">})();</span>
+</pre>
+<p>The problem happens because the <tt class="docutils literal">MaskedEditBehavior</tt> handles only <tt class="docutils literal">keypress</tt> event (or bypass IE browsers). My hack just changes it to handle <tt class="docutils literal">keydown</tt> too, because <a class="reference external" href="http://www.w3.org/TR/2010/WD-DOM-Level-3-Events-20100907/#event-type-keypress">W3C says</a> &quot;dispatch this event when a key is pressed down, if and only if that key normally produces a character value&quot;.</p>
+<p>This hack solved the issue to me and is running in production now, but it is a big reason to avoid Ajax Control Toolkit if you can. Maybe they will not support you.</p>
+<p>There are <a href="../2012/07/aspnet-maskededit-is-broken-in-webkit.html#disqus_thread">comments</a>.</p>                </article>
+            </aside><!-- /#featured -->
+                <section id="content" class="body">
+                    <h1>Other articles</h1>
+                    <hr />
+                    <ol id="posts-list" class="hfeed">
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="../2012/05/some-ways-to-remove-a-facebook-post.html" rel="bookmark"
+                           title="Permalink to Some ways to remove a Facebook post">Some ways to remove a Facebook post</a></h1>
+                </header>
+
+                <div class="entry-content">
+<footer class="post-info">
+        <abbr class="published" title="2012-05-06T00:00:00-03:00">
+                Published: Sun 06 May 2012
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../tag/funblocker.html">funblocker</a> <a href="../tag/hack.html">hack</a> </p>
+</footer><!-- /.post-info -->                <p>During my adventures developing <a class="reference external" href="https://chrome.google.com/webstore/detail/cgdkiknkffmdbonojkcofooaampcefom">FunBlocker</a>, I needed to hide some Facebook posts.</p>
+<p>Here is some of my code history in GitHub, analysing my different solutions to this problem.</p>
+<div class="section" id="just-hide-it">
+<h2>Just hide it</h2>
+<p>My first solution was just hide the post with CSS <tt class="docutils literal">display:none</tt>, when I still ran it with <a class="reference external" href="https://chrome.google.com/webstore/detail/abdogfafejmdomllalkdegagoehgbdbk">JavaScript …</a></p></div>
+                <a class="readmore" href="../2012/05/some-ways-to-remove-a-facebook-post.html">read more</a>
+<p>There are <a href="../2012/05/some-ways-to-remove-a-facebook-post.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
+            </article></li>
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="../2011/12/funblocker-clean-your-facebook-timeline.html" rel="bookmark"
+                           title="Permalink to Funblocker: Clean Your Facebook Timeline">Funblocker: Clean Your Facebook Timeline</a></h1>
+                </header>
+
+                <div class="entry-content">
+<footer class="post-info">
+        <abbr class="published" title="2011-12-03T00:00:00-02:00">
+                Published: Sat 03 December 2011
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../tag/funblocker.html">funblocker</a> <a href="../tag/hack.html">hack</a> </p>
+</footer><!-- /.post-info -->                <p>Facebook is a cool way to see what your friends are doing. Social network, that is what we want. But things does not work like we want all the time.</p>
+<p>People create a lot of annoying profiles and pages to share/repost funny pictures and things like that. Most part …</p>
+                <a class="readmore" href="../2011/12/funblocker-clean-your-facebook-timeline.html">read more</a>
+<p>There are <a href="../2011/12/funblocker-clean-your-facebook-timeline.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
+            </article></li>
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="../2010/10/cracking-captchas.html" rel="bookmark"
+                           title="Permalink to Cracking Captchas">Cracking Captchas</a></h1>
+                </header>
+
+                <div class="entry-content">
+<footer class="post-info">
+        <abbr class="published" title="2010-10-30T00:00:00-02:00">
+                Published: Sat 30 October 2010
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/hack.html">hack</a> </p>
+</footer><!-- /.post-info -->                <p>During PythonBrasil[6], we discussed about cracking captchas. I already worked on it to automate some tasks with a stupid captcha. A lot of internet voting systems and forms security are based on captcha.</p>
+<img alt="Captcha" src="../images/cracking-captchas/original.jpg" />
+<p>It is really easy to clean the image with some Python tools.</p>
+<img alt="Captcha cleaned" src="../images/cracking-captchas/cleaned.jpg" />
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">convert_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">threshold …</span></pre></div>
+                <a class="readmore" href="../2010/10/cracking-captchas.html">read more</a>
+<p>There are <a href="../2010/10/cracking-captchas.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
+            </article></li>
+                </ol><!-- /#posts-list -->
+                </section><!-- /#content -->
+        <section id="extras" class="body">
+                <div class="blogroll">
+                        <h2>links</h2>
+                        <ul>
+                            <li><a href="https://ceps.io">ceps.io</a></li>
+                            <li><a href="https://www.postmon.com.br">postmon</a></li>
+                            <li><a href="https://code.djangoproject.com/query?owner=iurisilvio&or&reporter=iurisilvio&col=id&col=summary&col=owner&col=status&col=reporter&col=type&order=priority">Django contributor</a></li>
+                            <li><a href="https://github.com/iurisilvio/bottle-sqlalchemy">bottle-sqlalchemy</a></li>
+                        </ul>
+                </div><!-- /.blogroll -->
+                <div class="social">
+                        <h2>social</h2>
+                        <ul>
+                            <li><a href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+
+                            <li><a href="https://twitter.com/iurisilvio">Twitter</a></li>
+                            <li><a href="https://github.com/iurisilvio">GitHub</a></li>
+                            <li><a href="http://br.linkedin.com/in/iurisilvio">LinkedIn</a></li>
+                        </ul>
+                </div><!-- /.social -->
+        </section><!-- /#extras -->
+
+        <footer id="contentinfo" class="body">
+                <address id="about" class="vcard body">
+                Proudly powered by <a href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a href="https://www.python.org/">Python</a>.
+                </address><!-- /#about -->
+
+                <p>The theme is by <a href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
+        </footer><!-- /#contentinfo -->
+
+    <script type="text/javascript">
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-33399692-1', 'auto');
+    ga('send', 'pageview');
+    </script>
+<script type="text/javascript">
+    var disqus_shortname = 'notenoughmemory';
+    (function () {
+        var s = document.createElement('script'); s.async = true;
+        s.type = 'text/javascript';
+        s.src = 'https://' + disqus_shortname + '.disqus.com/count.js';
+        (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+    }());
+</script>
+</body>
+</html>
