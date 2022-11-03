@@ -82,6 +82,6 @@ Faça um esforço consciente para manter a cultura de qualidade. O ganho direto 
 
 ## Leia mais uns links
 
-https://www.linkedin.com/pulse/how-scale-yourself-from-founder-leader-reid-hoffman
-https://review.firstround.com/our-6-must-reads-for-scaling-yourself-as-a-leader
-https://johnmattone.com/blog/why-comparing-yourself-to-others-derails-your-leadership-development/
+[How to scale yourself, from founder to leader](https://www.linkedin.com/pulse/how-scale-yourself-from-founder-leader-reid-hoffman)
+[Our 6 Must Reads for Scaling Yourself as a Leader](https://review.firstround.com/our-6-must-reads-for-scaling-yourself-as-a-leader)
+[Why Comparing Yourself to Others Derails Your Leadership Development](https://johnmattone.com/blog/why-comparing-yourself-to-others-derails-your-leadership-development/)
