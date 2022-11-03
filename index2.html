@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="generator" content="Pelican" />
         <title>iurisilvio</title>
         <link rel="stylesheet" href="./theme/css/main.css" />
@@ -15,6 +16,7 @@
                     <li><a href="./category/devops.html">devops</a></li>
                     <li><a href="./category/issue.html">issue</a></li>
                     <li><a href="./category/misc.html">misc</a></li>
+                    <li><a href="./category/productivity.html">productivity</a></li>
                     <li><a href="./category/programming.html">programming</a></li>
                     <li><a href="./category/stats.html">stats</a></li>
                 </ul></nav>
@@ -22,6 +24,34 @@
 
                 <section id="content" class="body">
                     <ol id="posts-list" class="hfeed" start="9">
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="./2012/09/bottle-wsgilog.html" rel="bookmark"
+                           title="Permalink to Bottle wsgilog">Bottle wsgilog</a></h1>
+                </header>
+
+                <div class="entry-content">
+<footer class="post-info">
+        <abbr class="published" title="2012-09-06T00:00:00-03:00">
+                Published: Thu 06 September 2012
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="./author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="./category/programming.html">programming</a>.</p>
+<p>tags: <a href="./tag/python.html">python</a> <a href="./tag/bottle.html">bottle</a> </p>
+</footer><!-- /.post-info -->                <p>Python has awesome tools for logging, including standard logging module. Also, through WSGI protocol we have the wsgilog middleware. Using it is easy with any Python web framework.</p>
+<p>You can easily integrate it in bottle environment.</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">bottle</span>
+<span class="kn">from</span> <span class="nn">wsgilog</span> <span class="kn">import</span> <span class="n">log</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">bottle</span><span class="o">.</span><span class="n">Bottle</span><span class="p">(</span><span class="n">catchall</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">logger_middleware</span> <span class="o">=</span> <span class="n">log</span><span class="p">(</span><span class="n">tohtml …</span></pre></div>
+                <a class="readmore" href="./2012/09/bottle-wsgilog.html">read more</a>
+<p>There are <a href="./2012/09/bottle-wsgilog.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
+            </article></li>
+
             <li><article class="hentry">
                 <header>
                     <h1><a href="./2012/09/python-thread-pool.html" rel="bookmark"
@@ -230,32 +260,6 @@
 <p>The project was presented in Sercomtel in december/2010 and we received the first prize. My team received BRL 5000 (divided in …</p>
                 <a class="readmore" href="./2011/01/we-won-sercomtel-university-contest.html">read more</a>
 <p>There are <a href="./2011/01/we-won-sercomtel-university-contest.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
-            </article></li>
-
-            <li><article class="hentry">
-                <header>
-                    <h1><a href="./2010/10/cracking-captchas.html" rel="bookmark"
-                           title="Permalink to Cracking Captchas">Cracking Captchas</a></h1>
-                </header>
-
-                <div class="entry-content">
-<footer class="post-info">
-        <abbr class="published" title="2010-10-30T00:00:00-02:00">
-                Published: Sat 30 October 2010
-        </abbr>
-
-        <address class="vcard author">
-                By                         <a class="url fn" href="./author/iuri-de-silvio.html">Iuri de Silvio</a>
-        </address>
-<p>In <a href="./category/programming.html">programming</a>.</p>
-<p>tags: <a href="./tag/python.html">python</a> <a href="./tag/hack.html">hack</a> </p>
-</footer><!-- /.post-info -->                <p>During PythonBrasil[6], we discussed about cracking captchas. I already worked on it to automate some tasks with a stupid captcha. A lot of internet voting systems and forms security are based on captcha.</p>
-<img alt="Captcha" src="./images/cracking-captchas/original.jpg" />
-<p>It is really easy to clean the image with some Python tools.</p>
-<img alt="Captcha cleaned" src="./images/cracking-captchas/cleaned.jpg" />
-<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">convert_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">threshold …</span></pre></div>
-                <a class="readmore" href="./2010/10/cracking-captchas.html">read more</a>
-<p>There are <a href="./2010/10/cracking-captchas.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
             </article></li>
                 </ol><!-- /#posts-list -->
 <p class="paginator">

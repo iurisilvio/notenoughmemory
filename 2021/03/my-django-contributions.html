@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="generator" content="Pelican" />
         <title>My Django contributions</title>
         <link rel="stylesheet" href="../../theme/css/main.css" />
@@ -16,6 +17,7 @@
                     <li><a href="../../category/devops.html">devops</a></li>
                     <li><a href="../../category/issue.html">issue</a></li>
                     <li><a href="../../category/misc.html">misc</a></li>
+                    <li><a href="../../category/productivity.html">productivity</a></li>
                     <li class="active"><a href="../../category/programming.html">programming</a></li>
                     <li><a href="../../category/stats.html">stats</a></li>
                 </ul></nav>
@@ -55,10 +57,10 @@ was simple.</p>
 <p>It was really obvious to me that it should be a noop to database. Even Stack Overflow
 <a class="reference external" href="https://stackoverflow.com/a/33191630/617395">had a response confirming that</a>.</p>
 <p>The first migration locked our database because it dropped and recreated a constraint.</p>
-<div class="highlight"><pre><span></span><span class="k">SET</span> <span class="k">CONSTRAINTS</span> <span class="ss">&quot;core_book_author_id_eaa1580d_fk_core_author_id&quot;</span> <span class="k">IMMEDIATE</span><span class="p">;</span>
-<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="ss">&quot;core_book&quot;</span> <span class="k">DROP</span> <span class="k">CONSTRAINT</span> <span class="ss">&quot;core_book_author_id_eaa1580d_fk_core_author_id&quot;</span><span class="p">;</span>
-<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="ss">&quot;core_book&quot;</span> <span class="k">ADD</span> <span class="k">CONSTRAINT</span> <span class="ss">&quot;core_book_author_id_eaa1580d_fk_core_author_id&quot;</span>
-    <span class="k">FOREIGN</span> <span class="k">KEY</span> <span class="p">(</span><span class="ss">&quot;author_id&quot;</span><span class="p">)</span> <span class="k">REFERENCES</span> <span class="ss">&quot;core_author&quot;</span> <span class="p">(</span><span class="ss">&quot;id&quot;</span><span class="p">)</span> <span class="k">DEFERRABLE</span> <span class="k">INITIALLY</span> <span class="k">DEFERRED</span><span class="p">;</span>
+<div class="highlight"><pre><span></span><span class="k">SET</span><span class="w"> </span><span class="k">CONSTRAINTS</span><span class="w"> </span><span class="ss">&quot;core_book_author_id_eaa1580d_fk_core_author_id&quot;</span><span class="w"> </span><span class="k">IMMEDIATE</span><span class="p">;</span><span class="w"></span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="ss">&quot;core_book&quot;</span><span class="w"> </span><span class="k">DROP</span><span class="w"> </span><span class="k">CONSTRAINT</span><span class="w"> </span><span class="ss">&quot;core_book_author_id_eaa1580d_fk_core_author_id&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="ss">&quot;core_book&quot;</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">CONSTRAINT</span><span class="w"> </span><span class="ss">&quot;core_book_author_id_eaa1580d_fk_core_author_id&quot;</span><span class="w"></span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="ss">&quot;author_id&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="ss">&quot;core_author&quot;</span><span class="w"> </span><span class="p">(</span><span class="ss">&quot;id&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">DEFERRABLE</span><span class="w"> </span><span class="k">INITIALLY</span><span class="w"> </span><span class="k">DEFERRED</span><span class="p">;</span><span class="w"></span>
 </pre></div>
 <p>Sad day, but right after that I prepared to run the second step. That time I
 checked the generated SQL with <tt class="docutils literal">sqlmigrate</tt> command and discovered it will

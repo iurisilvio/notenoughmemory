@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="generator" content="Pelican" />
         <title>Some ways to remove a Facebook post</title>
         <link rel="stylesheet" href="../../theme/css/main.css" />
@@ -16,6 +17,7 @@
                     <li><a href="../../category/devops.html">devops</a></li>
                     <li><a href="../../category/issue.html">issue</a></li>
                     <li><a href="../../category/misc.html">misc</a></li>
+                    <li><a href="../../category/productivity.html">productivity</a></li>
                     <li class="active"><a href="../../category/programming.html">programming</a></li>
                     <li><a href="../../category/stats.html">stats</a></li>
                 </ul></nav>
@@ -51,7 +53,7 @@
 <p>When I turned FunBlocker in a Chrome Extension, I decided not to depend on <a class="reference external" href="http://www.jquery.com">jQuery</a>, because it will run in background of Facebook and should not slow down the timeline performance. Or maybe I decided that because I never had programmed these basic things without jQuery.</p>
 <p>So, I find a link in a post I want to remove from the DOM.</p>
 <pre class="code html literal-block">
-<span class="c">&lt;!-- Facebook HTML posts tree looks like this --&gt;</span>
+<span class="cm">&lt;!-- Facebook HTML posts tree looks like this --&gt;</span>
 <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
     <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
         <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&quot;storyContent&quot;</span><span class="p">&gt;</span>
@@ -63,16 +65,16 @@
 </pre>
 <p>I search for links and get the parent element with class containing <tt class="docutils literal">storyContent</tt>. After that, I call <tt class="docutils literal">remove_story</tt>:</p>
 <pre class="code javascript literal-block">
-<span class="kd">function</span> <span class="nx">remove_story</span><span class="p">(</span><span class="nx">story</span><span class="p">)</span> <span class="p">{</span>
-    <span class="kd">var</span> <span class="nx">node</span> <span class="o">=</span> <span class="nx">story</span><span class="p">;</span>
-    <span class="kd">var</span> <span class="nx">parent</span> <span class="o">=</span> <span class="nx">node</span><span class="p">.</span><span class="nx">parentNode</span><span class="p">;</span>
-    <span class="k">while</span> <span class="p">(</span><span class="nx">parent</span><span class="p">.</span><span class="nx">tagName</span> <span class="o">!=</span> <span class="s1">'UL'</span><span class="p">)</span> <span class="p">{</span>
-        <span class="kd">var</span> <span class="nx">tmp</span> <span class="o">=</span> <span class="nx">parent</span><span class="p">;</span>
-        <span class="nx">parent</span> <span class="o">=</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">parentNode</span><span class="p">;</span>
-        <span class="nx">node</span> <span class="o">=</span> <span class="nx">tmp</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="nx">parent</span><span class="p">.</span><span class="nx">removeChild</span><span class="p">(</span><span class="nx">node</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="kd">function</span><span class="w"> </span><span class="nx">remove_story</span><span class="p">(</span><span class="nx">story</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="kd">var</span><span class="w"> </span><span class="nx">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">story</span><span class="p">;</span><span class="w">
+    </span><span class="kd">var</span><span class="w"> </span><span class="nx">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">node</span><span class="p">.</span><span class="nx">parentNode</span><span class="p">;</span><span class="w">
+    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nx">parent</span><span class="p">.</span><span class="nx">tagName</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s1">'UL'</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="kd">var</span><span class="w"> </span><span class="nx">tmp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">parent</span><span class="p">;</span><span class="w">
+        </span><span class="nx">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">parent</span><span class="p">.</span><span class="nx">parentNode</span><span class="p">;</span><span class="w">
+        </span><span class="nx">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tmp</span><span class="p">;</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+    </span><span class="nx">parent</span><span class="p">.</span><span class="nx">removeChild</span><span class="p">(</span><span class="nx">node</span><span class="p">);</span><span class="w">
+</span><span class="p">}</span>
 </pre>
 <p>It was more code than my first version, but I learnt a lot without the jQuery dependency. At this moment, I had <a class="reference external" href="https://github.com/iurisilvio/FunBlocker/blob/b57200734740e31c7505d9ab737041945943b7dd/fb.js#L14">62 lines of code</a> on GitHub.</p>
 </div>
@@ -80,11 +82,11 @@
 <h2>Click Hide Story</h2>
 <p>Facebook has an option in menu to remove the content from your timeline. How can I use it? Without jQuery it is not a streight forward task. The code below do almost the same thing than <tt class="docutils literal"><span class="pre">$(element).click()</span></tt>.</p>
 <pre class="code javascript literal-block">
-<span class="kd">var</span> <span class="nx">event_</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">createEvent</span><span class="p">(</span><span class="s2">&quot;MouseEvents&quot;</span><span class="p">);</span>
-<span class="nx">event_</span><span class="p">.</span><span class="nx">initEvent</span><span class="p">(</span><span class="s2">&quot;click&quot;</span><span class="p">,</span> <span class="kc">true</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span> <span class="c1">// event type, bubbling, cancelable
-</span><span class="k">if</span> <span class="p">(</span><span class="nx">element</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// element is the link I want to click
-</span>    <span class="nx">element</span><span class="p">.</span><span class="nx">dispatchEvent</span><span class="p">(</span><span class="nx">event_</span><span class="p">);</span>
-<span class="p">}</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">event_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">createEvent</span><span class="p">(</span><span class="s2">&quot;MouseEvents&quot;</span><span class="p">);</span><span class="w">
+</span><span class="nx">event_</span><span class="p">.</span><span class="nx">initEvent</span><span class="p">(</span><span class="s2">&quot;click&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span><span class="w"> </span><span class="c1">// event type, bubbling, cancelable</span><span class="w">
+</span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">element</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// element is the link I want to click</span><span class="w">
+    </span><span class="nx">element</span><span class="p">.</span><span class="nx">dispatchEvent</span><span class="p">(</span><span class="nx">event_</span><span class="p">);</span><span class="w">
+</span><span class="p">}</span>
 </pre>
 <p>Yes, sometimes it works. Other times Facebook just do not have the link I want because it is dinamically loaded. To solve this problem, I want to trigger the loading and after that click the button I need.</p>
 <p>I preferred another approach.</p>

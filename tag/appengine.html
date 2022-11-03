@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="generator" content="Pelican" />
         <title>iurisilvio - appengine</title>
         <link rel="stylesheet" href="../theme/css/main.css" />
@@ -15,6 +16,7 @@
                     <li><a href="../category/devops.html">devops</a></li>
                     <li><a href="../category/issue.html">issue</a></li>
                     <li><a href="../category/misc.html">misc</a></li>
+                    <li><a href="../category/productivity.html">productivity</a></li>
                     <li><a href="../category/programming.html">programming</a></li>
                     <li><a href="../category/stats.html">stats</a></li>
                 </ul></nav>
@@ -51,14 +53,14 @@
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 <p>In your <tt class="docutils literal">app.yaml</tt>, just send everything to your <tt class="docutils literal">helloworld.py</tt> app:</p>
-<div class="highlight"><pre><span></span><span class="nt">application</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">sample-app</span>
-<span class="nt">version</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="nt">runtime</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">python</span>
-<span class="nt">api_version</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
+<div class="highlight"><pre><span></span><span class="nt">application</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sample-app</span><span class="w"></span>
+<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w"></span>
+<span class="nt">runtime</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span><span class="w"></span>
+<span class="nt">api_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w"></span>
 
-<span class="nt">handlers</span><span class="p">:</span>
-  <span class="p p-Indicator">-</span> <span class="nt">url</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">/.*</span>
-  <span class="nt">script</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">helloworld.py</span>
+<span class="nt">handlers</span><span class="p">:</span><span class="w"></span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/.*</span><span class="w"></span>
+<span class="w">  </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">helloworld.py</span><span class="w"></span>
 </pre></div>
 <p>Run <tt class="docutils literal">dev_appserver.py</tt> to test (you already know how to do it if you read Getting Started).</p>
 <p>It works nice with last Bottle (v0.9.1). All Google App Engine features are decoupled from webapp, so you can use database, user authentication and others with Bottle.</p>

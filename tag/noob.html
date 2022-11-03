@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="generator" content="Pelican" />
         <title>iurisilvio - noob</title>
         <link rel="stylesheet" href="../theme/css/main.css" />
@@ -15,6 +16,7 @@
                     <li><a href="../category/devops.html">devops</a></li>
                     <li><a href="../category/issue.html">issue</a></li>
                     <li><a href="../category/misc.html">misc</a></li>
+                    <li><a href="../category/productivity.html">productivity</a></li>
                     <li><a href="../category/programming.html">programming</a></li>
                     <li><a href="../category/stats.html">stats</a></li>
                 </ul></nav>
@@ -37,8 +39,8 @@
 <p><tt class="docutils literal">&quot;You do not have sufficient permissions to access this page.&quot;</tt></p>
 <p>Ok, I just copied my database and my code, just changing configurations. <a class="reference external" href="https://www.google.com/webhpq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22&amp;oq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22">Google have a lot of results about this issue</a>, but it is not a simple problem. This message have a lot of meanings, maybe you just don't have access to database.</p>
 <p>I used almost a day reading Google results, but no one solved my problem. Of course, after I decided to stop, I get my <tt class="docutils literal"><span class="pre">wp-config.php</span></tt> files (development and production) and diffed then (<a class="reference external" href="http://www.quickdiff.com">http://www.quickdiff.com</a> is awesome).</p>
-<div class="highlight"><pre><span></span><span class="gd">- $table_prefix = &#39;wpProject_&#39;;</span>
-<span class="gi">+ $table_prefix = &#39;wpproject_&#39;;</span>
+<div class="highlight"><pre><span></span><span class="gd">- $table_prefix = &#39;wpProject_&#39;;</span><span class="w"></span>
+<span class="gi">+ $table_prefix = &#39;wpproject_&#39;;</span><span class="w"></span>
 </pre></div>
 <p>If you know a bit about MySQL, you know tables are not case sensitive in Windows. Wordpress don't care about that and don't give you any hint. So, if you found this post because you had a similar problem, go check your configurations.</p>
 <p>Just to make it obvious to anyone trying to solve the problem: <strong>TABLE PREFIX IS CASE SENSITIVE</strong>. Of course, maybe it is not the answer you need, because the &quot;error message&quot; does not give you much information.</p>

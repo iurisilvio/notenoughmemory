@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="generator" content="Pelican" />
         <title>iurisilvio - csharp</title>
         <link rel="stylesheet" href="../theme/css/main.css" />
@@ -15,6 +16,7 @@
                     <li><a href="../category/devops.html">devops</a></li>
                     <li><a href="../category/issue.html">issue</a></li>
                     <li><a href="../category/misc.html">misc</a></li>
+                    <li><a href="../category/productivity.html">productivity</a></li>
                     <li><a href="../category/programming.html">programming</a></li>
                     <li><a href="../category/stats.html">stats</a></li>
                 </ul></nav>
@@ -38,23 +40,23 @@
 <p>This bug is from 2008, documented in <a class="reference external" href="http://ajaxcontroltoolkit.codeplex.com/workitem/26978">issue 26978</a>, <a class="reference external" href="http://ajaxcontroltoolkit.codeplex.com/workitem/17166">issue 17166</a> and <a class="reference external" href="http://code.google.com/p/chromium/issues/detail?id=3341">chromium issue 3341 too</a>. These links have easy solutions: just take the code, change a couple of lines and recompile everything, but it was never merged or released.</p>
 <p>I do not want to fork the code to change two lines, but I can just hack around JavaScript and we are fine. If you opened the MaskedEdit example in Chrome, run the code below in JavaScript console and try again. I took some pieces of code around the internet and wrote my own to work with normal and minified versions of current version of the lib.</p>
 <pre class="code javascript literal-block">
-<span class="p">(</span><span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
-  <span class="k">if</span> <span class="p">(</span><span class="nx">Sys</span><span class="p">.</span><span class="nx">Browser</span><span class="p">.</span><span class="nx">agent</span> <span class="o">==</span> <span class="nx">Sys</span><span class="p">.</span><span class="nx">Browser</span><span class="p">.</span><span class="nx">Safari</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// don't worry, to this lib Chrome is Safari
-</span>    <span class="kd">function</span> <span class="nx">funcbody</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="p">{</span>
-      <span class="kd">var</span> <span class="nx">s</span> <span class="o">=</span> <span class="nx">f</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span>
-      <span class="k">return</span> <span class="nx">s</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">'{'</span><span class="p">));</span>
-    <span class="p">}</span>
-    <span class="k">try</span> <span class="p">{</span> <span class="nx">p</span> <span class="o">=</span> <span class="nx">Sys</span><span class="p">.</span><span class="nx">Extended</span><span class="p">.</span><span class="nx">UI</span><span class="p">.</span><span class="nx">MaskedEditBehavior</span><span class="p">.</span><span class="nx">prototype</span><span class="p">;</span> <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">e</span><span class="p">)</span> <span class="p">{</span> <span class="nx">p</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span> <span class="p">}</span>
-    <span class="k">if</span> <span class="p">(</span><span class="nx">p</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
-      <span class="nx">p</span><span class="p">.</span><span class="nx">_ExecuteNav</span> <span class="o">=</span> <span class="k">new</span> <span class="nb">Function</span><span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">,</span> <span class="s2">&quot;h&quot;</span><span class="p">,</span>
-        <span class="s1">'var c=-1,e=&quot; &quot;,a=&quot;&quot;,b=false,d=true,p=&quot;keypress&quot;,s=&quot;keydown&quot;,evt=g,scanCode=h;'</span> <span class="o">+</span>
-        <span class="nx">funcbody</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">_ExecuteNav</span><span class="p">)</span>
-          <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(g\.type==p\)if\(h==8\))/</span><span class="p">,</span> <span class="s2">&quot;g.type==s||$1&quot;</span><span class="p">)</span>
-          <span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(== Sys\.Browser\.InternetExplorer \|\| evt\.type == \&quot;keypress\&quot;)/</span><span class="p">,</span>
-                   <span class="s2">&quot;$1 || evt.type == \&quot;keydown\&quot;&quot;</span><span class="p">));</span>
-      <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">})();</span>
+<span class="p">(</span><span class="kd">function</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">Sys</span><span class="p">.</span><span class="nx">Browser</span><span class="p">.</span><span class="nx">agent</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">Sys</span><span class="p">.</span><span class="nx">Browser</span><span class="p">.</span><span class="nx">Safari</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// don't worry, to this lib Chrome is Safari</span><span class="w">
+    </span><span class="kd">function</span><span class="w"> </span><span class="nx">funcbody</span><span class="p">(</span><span class="nx">f</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="kd">var</span><span class="w"> </span><span class="nx">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">f</span><span class="p">.</span><span class="nx">toString</span><span class="p">();</span><span class="w">
+      </span><span class="k">return</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">substring</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">indexOf</span><span class="p">(</span><span class="s1">'{'</span><span class="p">));</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+    </span><span class="k">try</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">Sys</span><span class="p">.</span><span class="nx">Extended</span><span class="p">.</span><span class="nx">UI</span><span class="p">.</span><span class="nx">MaskedEditBehavior</span><span class="p">.</span><span class="nx">prototype</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w">
+    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">p</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nx">p</span><span class="p">.</span><span class="nx">_ExecuteNav</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Function</span><span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;h&quot;</span><span class="p">,</span><span class="w">
+        </span><span class="s1">'var c=-1,e=&quot; &quot;,a=&quot;&quot;,b=false,d=true,p=&quot;keypress&quot;,s=&quot;keydown&quot;,evt=g,scanCode=h;'</span><span class="w"> </span><span class="o">+</span><span class="w">
+        </span><span class="nx">funcbody</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">_ExecuteNav</span><span class="p">)</span><span class="w">
+          </span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(g\.type==p\)if\(h==8\))/</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;g.type==s||$1&quot;</span><span class="p">)</span><span class="w">
+          </span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/(== Sys\.Browser\.InternetExplorer \|\| evt\.type == \&quot;keypress\&quot;)/</span><span class="p">,</span><span class="w">
+                   </span><span class="s2">&quot;$1 || evt.type == \&quot;keydown\&quot;&quot;</span><span class="p">));</span><span class="w">
+      </span><span class="p">}</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">})();</span>
 </pre>
 <p>The problem happens because the <tt class="docutils literal">MaskedEditBehavior</tt> handles only <tt class="docutils literal">keypress</tt> event (or bypass IE browsers). My hack just changes it to handle <tt class="docutils literal">keydown</tt> too, because <a class="reference external" href="http://www.w3.org/TR/2010/WD-DOM-Level-3-Events-20100907/#event-type-keypress">W3C says</a> &quot;dispatch this event when a key is pressed down, if and only if that key normally produces a character value&quot;.</p>
 <p>This hack solved the issue to me and is running in production now, but it is a big reason to avoid Ajax Control Toolkit if you can. Maybe they will not support you.</p>
