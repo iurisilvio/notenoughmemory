@@ -1,8 +1,7 @@
 Title: Meu tempo minhas regras
 Date: 2022-11-04
-Category: programming
+Category: productivity
 Lang: pt-br
-Tags: python, django
 
 Como dev e como manager, já tive essa conversa sobre gerenciamento de tempo e priorização algumas vezes, então decidi documentar ~para economizar tempo~. Meu foco aqui são os líderes técnicos, mas usem como quiserem, tem ideias genéricas que podem ser aplicadas em outros contextos. [Advice Monster](https://www.ted.com/talks/michael_bungay_stanier_how_to_tame_your_advice_monster)
 
