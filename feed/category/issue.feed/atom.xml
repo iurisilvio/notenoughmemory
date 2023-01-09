@@ -5,8 +5,8 @@
 &lt;p&gt;&lt;tt class="docutils literal"&gt;&amp;quot;You do not have sufficient permissions to access this page.&amp;quot;&lt;/tt&gt;&lt;/p&gt;
 &lt;p&gt;Ok, I just copied my database and my code, just changing configurations. &lt;a class="reference external" href="https://www.google.com/webhpq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22&amp;amp;oq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22"&gt;Google have a lot of results about this issue&lt;/a&gt;, but it is not a simple problem. This message have a lot of meanings, maybe you just don't have access to database.&lt;/p&gt;
 &lt;p&gt;I used almost a day reading Google results, but no one solved my problem. Of course, after I decided to stop, I get my &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;wp-config.php&lt;/span&gt;&lt;/tt&gt; files (development and production) and diffed then (&lt;a class="reference external" href="http://www.quickdiff.com"&gt;http://www.quickdiff.com&lt;/a&gt; is awesome).&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="gd"&gt;- $table_prefix = &amp;#39;wpProject_&amp;#39;;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="gi"&gt;+ $table_prefix = &amp;#39;wpproject_&amp;#39;;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="gd"&gt;- $table_prefix = &amp;#39;wpProject_&amp;#39;;&lt;/span&gt;
+&lt;span class="gi"&gt;+ $table_prefix = &amp;#39;wpproject_&amp;#39;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;If you know a bit about MySQL, you know tables are not case sensitive in Windows. Wordpress don't care about that and don't give you any hint. So, if you found this post because you had a similar problem, go check your configurations.&lt;/p&gt;
 &lt;p&gt;Just to make it obvious to anyone trying to solve the problem: &lt;strong&gt;TABLE PREFIX IS CASE SENSITIVE&lt;/strong&gt;. Of course, maybe it is not the answer you need, because the &amp;quot;error message&amp;quot; does not give you much information.&lt;/p&gt;

@@ -37,11 +37,11 @@
 <p>tags: <a href="../tag/gsoc.html">gsoc</a> </p>
 </footer><!-- /.post-info --><p>My first task was build Scilab project. It is a huge project, and first time I did it I really didn't know how to do it. I just tried to build, checked the error message <cite>&quot;some lib not found&quot;</cite>, installed that lib, tried to build again and again... dozen of times.</p>
 <p>After that, of course I researched about how to build it in a better way. It is really easy using Ubuntu. First of all, just clone Scilab repository with git. I used YaSp branch, but it works to master too. After checkout, build all dependencies (the trick part I didn't know):</p>
-<div class="highlight"><pre><span></span>$ apt-get build-dep scilab
+<div class="highlight"><pre><span></span>$<span class="w"> </span>apt-get<span class="w"> </span>build-dep<span class="w"> </span>scilab
 </pre></div>
 <p>In scilab directory, just configure and make project:</p>
-<div class="highlight"><pre><span></span>$ ./configure
-$ make
+<div class="highlight"><pre><span></span>$<span class="w"> </span>./configure
+$<span class="w"> </span>make
 </pre></div>
 <p>This post looks really simple, but it is my first post during GSoC and solved a big issue to me (build dependencies).</p>
 <p>There are <a href="../2011/04/building-scilab-to-gsoc.html#disqus_thread">comments</a>.</p>                </article>

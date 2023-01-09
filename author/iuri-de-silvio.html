@@ -24,7 +24,113 @@
 
             <aside id="featured" class="body">
                 <article>
-                    <h1 class="entry-title"><a href="../pt-br/2022/11/meu-tempo-minhas-regras.html">Meu tempo minhas regras</a></h1>
+                    <h1 class="entry-title"><a href="../2023/01/faster-django-migrations-with-django-migrations-ci.html">Faster Django migrations with django-migrations-ci</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2023-01-09T00:00:00-03:00">
+                Published: Mon 09 January 2023
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> </p>
+</footer><!-- /.post-info --><p>Django migrations are really slow. It is an <a href="https://code.djangoproject.com/ticket/29898">open issue</a> for years.
+It was even an <a href="https://gist.github.com/aryan9600/b1c2eaf445006c17e02e7677cf1098d5">Google Summer of Code proposal</a>.</p>
+<p>For small projects, it take some seconds to run all your migrations and it is fine. A few developers
+can work on it for a long time. For a large project, it is not that simple.</p>
+<p>Our largest project today has 273 Django models and did ~1000 migrations in 4 years. Sometimes it
+takes 15 minutes on CI, even with a lot of optimizations. Django <code>squashmigrations</code> command do
+optimizations, but could be a lot better. After a lot of squashes, it's still slow.</p>
+<p>It was really bad for us, CI failed a lot because of timeouts or random postgres failures after
+some time trying to always migrate.</p>
+<p>We tried some things to improve our CI pipeline.</p>
+<h2>Do not migrate on CI</h2>
+<p>A common advice to improve this time is to not run migrations on CI. It is fast.</p>
+<p>You can override the <a href="https://docs.djangoproject.com/en/4.1/ref/settings/#std-setting-MIGRATION_MODULES"><code>MIGRATIONS_MODULES</code></a> for testing:</p>
+<div class="highlight"><pre><span></span><code><span class="n">MIGRATION_MODULES</span> <span class="o">=</span> <span class="p">{</span><span class="n">app</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">app</span> <span class="ow">in</span> <span class="n">INSTALLED_APPS</span><span class="p">}</span>
+</code></pre></div>
+
+<p>It is not really safe, because now you run migrations only on deployments, which is risky.
+Large projects have data migrations, migration bugs and other issues that you want to discover
+before production. So we added another stage to run migrations and our problem was back.</p>
+<h2>Reuse database</h2>
+<p>In the past <a href="/2021/03/faster-parallel-pytest-django.html">I had to hack pytest-django setup to run less migrations</a>.
+This was useful to know how to separate migrations and test steps.</p>
+<p>I changed our pipeline to dump the migrated database to a SQL file and cached it on GitLab CI.</p>
+<p>Some old code examples from our CI:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Don&#39;t try to copy it, please!</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">$CI_PROJECT_DIR</span>/djangomigrations.sql<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>psql<span class="w"> </span>-h<span class="w"> </span><span class="nv">$DB_HOST</span><span class="w"> </span>-U<span class="w"> </span><span class="nv">$POSTGRES_USER</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;CREATE DATABASE </span><span class="nv">$DB_NAME</span><span class="s2">;&quot;</span>
+<span class="w">    </span>pg_restore<span class="w"> </span>-h<span class="w"> </span><span class="nv">$DB_HOST</span><span class="w"> </span>-U<span class="w"> </span><span class="nv">$POSTGRES_USER</span><span class="w"> </span>-d<span class="w"> </span><span class="nv">$DB_NAME</span><span class="w"> </span><span class="nv">$CI_PROJECT_DIR</span>/djangomigrations.sql
+<span class="k">else</span>
+<span class="w">    </span><span class="nb">time</span><span class="w"> </span>./manage.py<span class="w"> </span>setup_test_db
+<span class="w">    </span>pg_dump<span class="w"> </span>-F<span class="w"> </span>c<span class="w"> </span>-h<span class="w"> </span><span class="nv">$DB_HOST</span><span class="w"> </span>-U<span class="w"> </span><span class="nv">$POSTGRES_USER</span><span class="w"> </span><span class="nv">$DB_NAME</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$CI_PROJECT_DIR</span>/djangomigrations.sql
+<span class="k">fi</span>
+<span class="nb">time</span><span class="w"> </span>./manage.py<span class="w"> </span>clone_test_db
+</code></pre></div>
+
+<p>Commands <code>setup_test_db</code> and <code>clone_test_db</code> were just a few lines of Python code, but I'll not paste it here.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># GitLab CI cache work this way.</span>
+<span class="nt">cache</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">key</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">files</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;requirements.txt&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/migrations/*.py&quot;</span>
+<span class="w">  </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">djangomigrations.sql</span>
+<span class="w">  </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always</span>
+</code></pre></div>
+
+<p>Perfect! Running a migration state that already ran in the past, GitLab CI give me an
+SQL file with this state and I restore it to my database. It took our database migrations from
+minutes to just a few seconds. Works for me!</p>
+<h2>django-migrations-ci</h2>
+<p>I went to DjangoCon US to <a href="https://2022.djangocon.us/talks/django-from-queryset-to-serialization/">talk about django-qserializer</a>. There I had some conversations about how migrations are slow.
+More people had the same issue, so I started <a href="https://github.com/buserbrasil/django-migrations-ci">django-migrations-ci</a>
+during sprint days of the event.</p>
+<p>Using this module, it is just one extra command to setup your test database:</p>
+<div class="highlight"><pre><span></span><code><span class="o">./</span><span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">migrateci</span>
+<span class="o">./</span><span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">test</span> <span class="o">--</span><span class="n">keepdb</span>
+</code></pre></div>
+
+<p>Following my original idea, it started using CI caching to provide a storage layer.</p>
+<p>I implemented it to sqlite3, mysql and postgres. Never tried to implement for oracle, but it is easy to add
+other databases. Also, I documented how to integrate it with GitHub Actions and GitLab CI.</p>
+<h2>Partial caching</h2>
+<p>After this initial sprint, I replaced the CI caching with a custom storage, easy to integrate
+with anything <a href="https://django-storages.readthedocs.io/en/latest/"><code>django-storages</code></a> support.</p>
+<p>I did that to support partial migrations. It was impossible to do it with CI caching, because they don't have
+an API to easily choose the cache I want.</p>
+<p>When a new migration is added, there is no migration state cached, so all migrations are processed
+again. To fix this use case, I wanted to get a previous state, restore from it and run only new
+migrations, which is reasonably fast.</p>
+<h2>Use it</h2>
+<p>Now I can say it is easy to reuse my solution and it really adds value to any project where
+your migrations take more than a few seconds.</p>
+<p>Install it, configure an external storage and add a command to your CI scripts.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">storages.backends.s3boto3</span> <span class="kn">import</span> <span class="n">S3Boto3Storage</span>
+
+<span class="k">class</span> <span class="nc">MigrateCIStorage</span><span class="p">(</span><span class="n">S3Boto3Storage</span><span class="p">):</span>
+    <span class="n">bucket_name</span> <span class="o">=</span> <span class="s2">&quot;mybucket-migrateci-cache&quot;</span>
+    <span class="n">region_name</span> <span class="o">=</span> <span class="s2">&quot;us-east-1&quot;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./manage.py<span class="w"> </span>migrateci<span class="w"> </span>--storage-class<span class="w"> </span>path.to.MigrateCIStorage
+</code></pre></div><p>There are <a href="../2023/01/faster-django-migrations-with-django-migrations-ci.html#disqus_thread">comments</a>.</p>                </article>
+            </aside><!-- /#featured -->
+                <section id="content" class="body">
+                    <h1>Other articles</h1>
+                    <hr />
+                    <ol id="posts-list" class="hfeed">
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="../pt-br/2022/11/meu-tempo-minhas-regras.html" rel="bookmark"
+                           title="Permalink to Meu tempo minhas regras">Meu tempo minhas regras</a></h1>
+                </header>
+
+                <div class="entry-content">
 <footer class="post-info">
         <abbr class="published" title="2022-11-04T00:00:00-03:00">
                 Published: Fri 04 November 2022
@@ -35,58 +141,11 @@
         </address>
 <p>In <a href="../category/productivity.html">productivity</a>.</p>
 
-</footer><!-- /.post-info --><p>Como dev e como manager, já tive essa conversa sobre gerenciamento de tempo e priorização algumas vezes, então decidi documentar ~para economizar tempo~. Meu foco aqui são os líderes técnicos, mas usem como quiserem, tem ideias genéricas que podem ser aplicadas em outros contextos. <a href="https://www.ted.com/talks/michael_bungay_stanier_how_to_tame_your_advice_monster">Advice Monster</a></p>
-<p>Como líder, você tem responsabilidades extras, mas a expectativa é que você continue programando, com impacto crescente no que você faz. A conta não fecha. Gerenciar essa expectativa e todas as responsabilidades é o desafio e <strong>você vai se cobrar por não conseguir fazer tudo</strong>.</p>
-<p>Essas são minhas ideias básicas para facilitar decisões de gerenciamento de tempo <strong>pessoal</strong>. Suas decisões impactam o resultado da empresa, mas a base de tudo é pensar no melhor uso do seu tempo.</p>
-<h2>Faça o time não depender de você</h2>
-<p>Seu objetivo principal como líder é contribuir para o desenvolvimento do time, chegando no limite em que o time já roda sem você. Esse é o cenário ideal, que te deixa livre para pensar em problemas maiores.</p>
-<p>Para chegar aí, é bastante tempo de acompanhamento e mentorias. Entenda onde cada um quer se desenvolver e libere seu tempo delegando a responsabilidade para o time, de preferência alinhando com a expectativa de desenvolvimento de cada liderado.</p>
-<p><strong>Não limite as tarefas ao que cada um já sabe.</strong> Se você já sabe fazer algo bem, deixar alguém fazer é uma oportunidade excelente de aprendizado. Nesse caso, use seu tempo para ensinar, não para executar. Para isso funcionar, incentive a autonomia, desapegue da solução. É muito provável que não fique no mesmo nível de qualidade que você faria ou até que seja uma solução bem diferente. Use isso para novas rodadas de aprendizado, mas não tente assumir a solução para fazer do seu jeito. Você vai se surpreender e ficar orgulhoso quando seus liderados fizerem uma solução que você não pensou e é melhor do que você faria.</p>
-<h2>Seu objetivo é se escalar</h2>
-<p>Como contribuidor individual, você tem tempo limitado, ~8h/dia. Liderando um time, seu tempo disponível para executar é ainda menor. Você precisa usar seu time para escalar sua capacidade e conhecimento, aumentando seu impacto total. Para isso, você precisa:</p>
-<ul>
-<li>Contribuir com o aprendizado do time.</li>
-<li>Saber quando você precisa implementar a solução.</li>
-<li>Saber quando é melhor só desenhar a ideia ou definir a solução.</li>
-<li>Saber quando você pode só deixar para outro resolver o problema.</li>
-<li>Saber amplificar os resultados e comportamentos positivos do time, deixando claro o que você valoriza. Isso direciona seus liderados e pessoas próximas para o caminho que você quer que aconteça mais. <a href="https://www.linkedin.com/pulse/why-great-leaders-amplifiers-margot-andersen-1d">Why Great Leaders Are Amplifiers</a></li>
-</ul>
-<p>Quando for alçado para uma posição de liderança, é comum achar que não está sendo produtivo por ter menos tempo para programar. Quando somos apenas devs, atrelamos nossa medida de produtividade a entregas feitas por nós. Na posição de liderança, você deve medir o impacto e funcionalidades entregues pelo time, esse é sua grande métrica. Se você fizer cada pessoa de um time de 10 pessoas render 10% a mais, sua produtividade terá aumentado 100%.</p>
-<h2>Deixe cair alguns pratos</h2>
-<p><strong>Você tem muito mais trabalho possível do que tempo.</strong> Saber quais são os maiores impactos ajuda na priorização, mas só isso não é suficiente. Você ainda acaba com muitos trabalhos urgentes e prioritários. Foque no que faz mais sentido, delegue para o time o que der e comunique o que não for possível fazer. Está tudo bem, alinhe com os envolvidos e gerencie as dores maiores.</p>
-<h2>Comunique muito</h2>
-<p>É sua responsabilidade tomar decisões. No seu time ninguém tem mais maturidade e conhecimento do que você para isso e esperam a ação vinda de você, mesmo que estejam todos de acordo. Mais difícil do que tomar a decisão é garantir que todos entendam o que foi feito e os motivos.</p>
-<p><strong>Consulte quem é impactado e quem sabe mais.</strong> Execute e comunique para todos a ação e os motivos. Isso reduz retrabalho e os pontos de contato para explicar a decisão. Isso aumenta a confiança de todos em você. Documentação boa é comunicação eficiente.</p>
-<h2>Não se compare com os outros</h2>
-<p>Olhe para a sua evolução. Cada um tem uma velocidade de aprendizado, um tempo disponível diferente. Se comparar só gera frustração, sempre tem alguém melhor que você. Aprenda com eles, mas não compare seus resultados.</p>
-<p>Tem quem trabalhe mais que 8h/dia, quem tem tempo para estudar a noite toda ou já carrega o conhecimento de vários anos. O resultado atual importa bem menos do que o seu potencial de crescimento e como você aumenta seu impacto com o tempo.</p>
-<h2>Saiba dizer não</h2>
-<p>Proteja seu tempo. Seu tempo de trabalho é limitado, foque nas prioridades já definidas e fuja da reunião com assunto pouco definido. Incentive a conversa/documentação assíncrona para facilitar a reunião futura.</p>
-<p>Mudanças de prioridade acontecem e quando algo urgente surgir, redefina datas acordadas para outras entregas, alinhe o que é mais prioritário e estabeleça novos prazos de acordo com a nova realidade. Tentar ser o herói e assumir mais responsabilidades do que pode não é sustentável no médio/longo prazo.</p>
-<p>Seu tempo fora do trabalho é também limitado. Contribua com o que for necessário, mas saiba diferenciar o que é uma urgência do que é um problema que pode esperar o dia seguinte ou segunda-feira.</p>
-<p>Não se compare, tem quem pode dedicar mais tempo, tem quem pode estudar mais, tem quem pode estar online 24/7 e é muito fácil cair na armadilha de querer seguir a rotina dos outros. Intensidade é necessária, mas construa uma rotina saudável, para fazer isso por bastante tempo.</p>
-<h2>Blocos de trabalho no calendário</h2>
-<p>Defina blocos sem reuniões. Focus time que pode ser usado para qualquer tarefa individual. Escrever código, escrever documentação, revisar código do time, etc.</p>
-<p><strong>Incentive seu time a ter blocos assim também e respeite esse tempo.</strong> Você já tem isso informalmente nos squads. Por exemplo, a daily pode ser sempre a tarde para deixar a manhã sem interrupções. Levando isso para o calendário, você incentiva outros times a respeitarem esse tempo também.</p>
-<p>Nem sempre é possível, às vezes vão passar por cima do seu bloco de tempo porque as agendas não batem, mas é um sinal para orientar quem precisa falar com você.</p>
-<p><a href="http://www.paulgraham.com/makersschedule.html">Maker's schedule</a></p>
-<h2>Reduza o tempo de troca de contexto</h2>
-<p>Anote todos seus contextos. Reuniões, conversas de corredor, dúvidas genéricas, escrita de código, revisão de código, impossível manter tudo na cabeça. Escreva para consolidar suas ideias e ter onde consultar quando não souber mais o que está acontecendo.</p>
-<p>Você muda muito de contexto e o tempo de recuperação da troca de contexto é alto. Mesmo com toda otimização de tempo feita, é inevitável ter interrupções.</p>
-<p><strong>Quando precisar largar o código pela metade, sempre anote qual é o próximo passo.</strong> Um comentário no código é suficiente para você saber exatamente onde parou e o que precisa fazer na sequência. Se a interrupção for um pouco mais planejada, pare com um teste quebrado, que o próximo passo é implementar a correção para ele. A recuperação de contexto é muito mais rápida assim.</p>
-<p><a href="https://github.com/simonw/djangocon-2022-productivity">Simon Willison DjangoCon US 2022 talk</a></p>
-<h2>Qualidade é velocidade</h2>
-<p><strong>Débito técnico custa caro e tem juros.</strong> Aumentar qualidade e reduzir bugs te permite avançar mais rápido. Ter menos bugs para se preocupar é mais tempo para trabalhar na evolução do produto.</p>
-<p>Faça um esforço consciente para manter a cultura de qualidade. O ganho direto é um código melhor, mas os efeitos secundários são muito maiores e acumulam. As próximas entregas são mais rápidas, o aprendizado acumulado do time é maior por trabalhar com exemplos cada vez melhores, a velocidade é maior por existir muito mais confiança no sistema de trabalho.</p>
-<h2>Leia mais uns links</h2>
-<p><a href="https://www.linkedin.com/pulse/how-scale-yourself-from-founder-leader-reid-hoffman">How to scale yourself, from founder to leader</a></p>
-<p><a href="https://review.firstround.com/our-6-must-reads-for-scaling-yourself-as-a-leader">Our 6 Must Reads for Scaling Yourself as a Leader</a></p>
-<p><a href="https://johnmattone.com/blog/why-comparing-yourself-to-others-derails-your-leadership-development/">Why Comparing Yourself to Others Derails Your Leadership Development</a></p><p>There are <a href="../pt-br/2022/11/meu-tempo-minhas-regras.html#disqus_thread">comments</a>.</p>                </article>
-            </aside><!-- /#featured -->
-                <section id="content" class="body">
-                    <h1>Other articles</h1>
-                    <hr />
-                    <ol id="posts-list" class="hfeed">
+</footer><!-- /.post-info -->                <p>Como dev e como manager, já tive essa conversa sobre gerenciamento de tempo e priorização algumas vezes, então decidi documentar ~para economizar tempo~. Meu foco aqui são os líderes técnicos, mas usem como quiserem, tem ideias genéricas que podem ser aplicadas em outros contextos. <a href="https://www.ted.com/talks/michael_bungay_stanier_how_to_tame_your_advice_monster">Advice Monster</a></p>
+<p>Como líder, você tem …</p>
+                <a class="readmore" href="../pt-br/2022/11/meu-tempo-minhas-regras.html">read more</a>
+<p>There are <a href="../pt-br/2022/11/meu-tempo-minhas-regras.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
+            </article></li>
 
             <li><article class="hentry">
                 <header>
@@ -289,29 +348,6 @@ unittests. Django create a template database and copy …</p>
 <p>Ok, I just copied my database and my code, just changing configurations. <a class="reference external" href="https://www.google.com/webhpq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22&amp;oq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22">Google have a …</a></p>
                 <a class="readmore" href="../2012/11/wordpress-you-do-not-have-sufficient-permissions-to-access-this-page.html">read more</a>
 <p>There are <a href="../2012/11/wordpress-you-do-not-have-sufficient-permissions-to-access-this-page.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
-            </article></li>
-
-            <li><article class="hentry">
-                <header>
-                    <h1><a href="../2012/11/google-analytics-memory-leak-in-chrome.html" rel="bookmark"
-                           title="Permalink to Google Analytics memory leak in Chrome">Google Analytics memory leak in Chrome</a></h1>
-                </header>
-
-                <div class="entry-content">
-<footer class="post-info">
-        <abbr class="published" title="2012-11-05T00:00:00-02:00">
-                Published: Mon 05 November 2012
-        </abbr>
-
-        <address class="vcard author">
-                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
-        </address>
-<p>In <a href="../category/issue.html">issue</a>.</p>
-<p>tags: <a href="../tag/chrome.html">chrome</a> </p>
-</footer><!-- /.post-info -->                <p>In last days, after I upgraded to Ubuntu 12.10 (it may be related with the issue or not), I experienced a weird slowness in the whole OS. Using <tt class="docutils literal">top</tt>, I found a Chrome tab consuming around 1.2GB.</p>
-<p>It was a tab with a Google Analytics realtime view. I …</p>
-                <a class="readmore" href="../2012/11/google-analytics-memory-leak-in-chrome.html">read more</a>
-<p>There are <a href="../2012/11/google-analytics-memory-leak-in-chrome.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
             </article></li>
                 </ol><!-- /#posts-list -->
 <p class="paginator">

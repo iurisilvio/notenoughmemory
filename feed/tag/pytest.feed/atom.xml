@@ -16,12 +16,12 @@ and the overhead is minimal, only when you have database migrations.&lt;/p&gt;
 pytest-xdist don't have a global setup and teardown.&lt;/p&gt;
 &lt;p&gt;Now I have a small hack, working great so far. This is the script running our
 tests:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;./manage.py shell -c &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;./manage.py&lt;span class="w"&gt; &lt;/span&gt;shell&lt;span class="w"&gt; &lt;/span&gt;-c&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
 &lt;span class="s2"&gt;from django.test.utils import setup_databases&lt;/span&gt;
 &lt;span class="s2"&gt;from xdist.plugin import pytest_xdist_auto_num_workers&lt;/span&gt;
 &lt;span class="s2"&gt;setup_databases(verbosity=True, interactive=False, parallel=pytest_xdist_auto_num_workers())&lt;/span&gt;
 &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
-pytest --reuse-db -n auto
+pytest&lt;span class="w"&gt; &lt;/span&gt;--reuse-db&lt;span class="w"&gt; &lt;/span&gt;-n&lt;span class="w"&gt; &lt;/span&gt;auto
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;Django unittests generate names like &lt;tt class="docutils literal"&gt;test_yourdb_1&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_2&lt;/tt&gt; and
 &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; generate names like &lt;tt class="docutils literal"&gt;test_yourdb_gw0&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_gw1&lt;/tt&gt;, their

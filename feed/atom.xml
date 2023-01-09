@@ -1,5 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>iurisilvio</title><link href="https://iurisilv.io/" rel="alternate"></link><link href="https://iurisilv.io/feed/atom.xml" rel="self"></link><id>https://iurisilv.io/</id><updated>2022-11-04T00:00:00-03:00</updated><entry><title>Meu tempo minhas regras</title><link href="https://iurisilv.io/pt-br/2022/11/meu-tempo-minhas-regras.html" rel="alternate"></link><published>2022-11-04T00:00:00-03:00</published><updated>2022-11-04T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2022-11-04:/pt-br/2022/11/meu-tempo-minhas-regras.html</id><summary type="html">&lt;p&gt;Como dev e como manager, já tive essa conversa sobre gerenciamento de tempo e priorização algumas vezes, então decidi documentar ~para economizar tempo~. Meu foco aqui são os líderes técnicos, mas usem como quiserem, tem ideias genéricas que podem ser aplicadas em outros contextos. &lt;a href="https://www.ted.com/talks/michael_bungay_stanier_how_to_tame_your_advice_monster"&gt;Advice Monster&lt;/a&gt;&lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>iurisilvio</title><link href="https://iurisilv.io/" rel="alternate"></link><link href="https://iurisilv.io/feed/atom.xml" rel="self"></link><id>https://iurisilv.io/</id><updated>2023-01-09T00:00:00-03:00</updated><entry><title>Faster Django migrations with django-migrations-ci</title><link href="https://iurisilv.io/2023/01/faster-django-migrations-with-django-migrations-ci.html" rel="alternate"></link><published>2023-01-09T00:00:00-03:00</published><updated>2023-01-09T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2023-01-09:/2023/01/faster-django-migrations-with-django-migrations-ci.html</id><summary type="html">&lt;p&gt;Django migrations are really slow. It is an &lt;a href="https://code.djangoproject.com/ticket/29898"&gt;open issue&lt;/a&gt; for years.
+It was even an &lt;a href="https://gist.github.com/aryan9600/b1c2eaf445006c17e02e7677cf1098d5"&gt;Google Summer of Code proposal&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;For small projects, it take some seconds to run all your migrations and it is fine. A few developers
+can work on it for a long time. For a …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Django migrations are really slow. It is an &lt;a href="https://code.djangoproject.com/ticket/29898"&gt;open issue&lt;/a&gt; for years.
+It was even an &lt;a href="https://gist.github.com/aryan9600/b1c2eaf445006c17e02e7677cf1098d5"&gt;Google Summer of Code proposal&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;For small projects, it take some seconds to run all your migrations and it is fine. A few developers
+can work on it for a long time. For a large project, it is not that simple.&lt;/p&gt;
+&lt;p&gt;Our largest project today has 273 Django models and did ~1000 migrations in 4 years. Sometimes it
+takes 15 minutes on CI, even with a lot of optimizations. Django &lt;code&gt;squashmigrations&lt;/code&gt; command do
+optimizations, but could be a lot better. After a lot of squashes, it's still slow.&lt;/p&gt;
+&lt;p&gt;It was really bad for us, CI failed a lot because of timeouts or random postgres failures after
+some time trying to always migrate.&lt;/p&gt;
+&lt;p&gt;We tried some things to improve our CI pipeline.&lt;/p&gt;
+&lt;h2&gt;Do not migrate on CI&lt;/h2&gt;
+&lt;p&gt;A common advice to improve this time is to not run migrations on CI. It is fast.&lt;/p&gt;
+&lt;p&gt;You can override the &lt;a href="https://docs.djangoproject.com/en/4.1/ref/settings/#std-setting-MIGRATION_MODULES"&gt;&lt;code&gt;MIGRATIONS_MODULES&lt;/code&gt;&lt;/a&gt; for testing:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;MIGRATION_MODULES&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;&lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;rsplit&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;.&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)[&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;]:&lt;/span&gt; &lt;span class="kc"&gt;None&lt;/span&gt; &lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;app&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="n"&gt;INSTALLED_APPS&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;It is not really safe, because now you run migrations only on deployments, which is risky.
+Large projects have data migrations, migration bugs and other issues that you want to discover
+before production. So we added another stage to run migrations and our problem was back.&lt;/p&gt;
+&lt;h2&gt;Reuse database&lt;/h2&gt;
+&lt;p&gt;In the past &lt;a href="/2021/03/faster-parallel-pytest-django.html"&gt;I had to hack pytest-django setup to run less migrations&lt;/a&gt;.
+This was useful to know how to separate migrations and test steps.&lt;/p&gt;
+&lt;p&gt;I changed our pipeline to dump the migrated database to a SQL file and cached it on GitLab CI.&lt;/p&gt;
+&lt;p&gt;Some old code examples from our CI:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# Don&amp;#39;t try to copy it, please!&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$CI_PROJECT_DIR&lt;/span&gt;/djangomigrations.sql&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;then&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;psql&lt;span class="w"&gt; &lt;/span&gt;-h&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$DB_HOST&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-U&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$POSTGRES_USER&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-c&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;CREATE DATABASE &lt;/span&gt;&lt;span class="nv"&gt;$DB_NAME&lt;/span&gt;&lt;span class="s2"&gt;;&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;pg_restore&lt;span class="w"&gt; &lt;/span&gt;-h&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$DB_HOST&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-U&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$POSTGRES_USER&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-d&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$DB_NAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$CI_PROJECT_DIR&lt;/span&gt;/djangomigrations.sql
+&lt;span class="k"&gt;else&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nb"&gt;time&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;./manage.py&lt;span class="w"&gt; &lt;/span&gt;setup_test_db
+&lt;span class="w"&gt;    &lt;/span&gt;pg_dump&lt;span class="w"&gt; &lt;/span&gt;-F&lt;span class="w"&gt; &lt;/span&gt;c&lt;span class="w"&gt; &lt;/span&gt;-h&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$DB_HOST&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-U&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$POSTGRES_USER&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$DB_NAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&amp;gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$CI_PROJECT_DIR&lt;/span&gt;/djangomigrations.sql
+&lt;span class="k"&gt;fi&lt;/span&gt;
+&lt;span class="nb"&gt;time&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;./manage.py&lt;span class="w"&gt; &lt;/span&gt;clone_test_db
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Commands &lt;code&gt;setup_test_db&lt;/code&gt; and &lt;code&gt;clone_test_db&lt;/code&gt; were just a few lines of Python code, but I'll not paste it here.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# GitLab CI cache work this way.&lt;/span&gt;
+&lt;span class="nt"&gt;cache&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nt"&gt;key&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nt"&gt;files&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="w"&gt;      &lt;/span&gt;&lt;span class="p p-Indicator"&gt;-&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s"&gt;&amp;quot;requirements.txt&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;      &lt;/span&gt;&lt;span class="p p-Indicator"&gt;-&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s"&gt;&amp;quot;*/migrations/*.py&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nt"&gt;paths&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="p p-Indicator"&gt;-&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;djangomigrations.sql&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nt"&gt;when&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;always&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Perfect! Running a migration state that already ran in the past, GitLab CI give me an
+SQL file with this state and I restore it to my database. It took our database migrations from
+minutes to just a few seconds. Works for me!&lt;/p&gt;
+&lt;h2&gt;django-migrations-ci&lt;/h2&gt;
+&lt;p&gt;I went to DjangoCon US to &lt;a href="https://2022.djangocon.us/talks/django-from-queryset-to-serialization/"&gt;talk about django-qserializer&lt;/a&gt;. There I had some conversations about how migrations are slow.
+More people had the same issue, so I started &lt;a href="https://github.com/buserbrasil/django-migrations-ci"&gt;django-migrations-ci&lt;/a&gt;
+during sprint days of the event.&lt;/p&gt;
+&lt;p&gt;Using this module, it is just one extra command to setup your test database:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;./&lt;/span&gt;&lt;span class="n"&gt;manage&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;py&lt;/span&gt; &lt;span class="n"&gt;migrateci&lt;/span&gt;
+&lt;span class="o"&gt;./&lt;/span&gt;&lt;span class="n"&gt;manage&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;py&lt;/span&gt; &lt;span class="n"&gt;test&lt;/span&gt; &lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="n"&gt;keepdb&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Following my original idea, it started using CI caching to provide a storage layer.&lt;/p&gt;
+&lt;p&gt;I implemented it to sqlite3, mysql and postgres. Never tried to implement for oracle, but it is easy to add
+other databases. Also, I documented how to integrate it with GitHub Actions and GitLab CI.&lt;/p&gt;
+&lt;h2&gt;Partial caching&lt;/h2&gt;
+&lt;p&gt;After this initial sprint, I replaced the CI caching with a custom storage, easy to integrate
+with anything &lt;a href="https://django-storages.readthedocs.io/en/latest/"&gt;&lt;code&gt;django-storages&lt;/code&gt;&lt;/a&gt; support.&lt;/p&gt;
+&lt;p&gt;I did that to support partial migrations. It was impossible to do it with CI caching, because they don't have
+an API to easily choose the cache I want.&lt;/p&gt;
+&lt;p&gt;When a new migration is added, there is no migration state cached, so all migrations are processed
+again. To fix this use case, I wanted to get a previous state, restore from it and run only new
+migrations, which is reasonably fast.&lt;/p&gt;
+&lt;h2&gt;Use it&lt;/h2&gt;
+&lt;p&gt;Now I can say it is easy to reuse my solution and it really adds value to any project where
+your migrations take more than a few seconds.&lt;/p&gt;
+&lt;p&gt;Install it, configure an external storage and add a command to your CI scripts.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;storages.backends.s3boto3&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;S3Boto3Storage&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;MigrateCIStorage&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;S3Boto3Storage&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;bucket_name&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;mybucket-migrateci-cache&amp;quot;&lt;/span&gt;
+    &lt;span class="n"&gt;region_name&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;us-east-1&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;$&lt;span class="w"&gt; &lt;/span&gt;./manage.py&lt;span class="w"&gt; &lt;/span&gt;migrateci&lt;span class="w"&gt; &lt;/span&gt;--storage-class&lt;span class="w"&gt; &lt;/span&gt;path.to.MigrateCIStorage
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content><category term="programming"></category><category term="python"></category><category term="django"></category></entry><entry><title>Meu tempo minhas regras</title><link href="https://iurisilv.io/pt-br/2022/11/meu-tempo-minhas-regras.html" rel="alternate"></link><published>2022-11-04T00:00:00-03:00</published><updated>2022-11-04T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2022-11-04:/pt-br/2022/11/meu-tempo-minhas-regras.html</id><summary type="html">&lt;p&gt;Como dev e como manager, já tive essa conversa sobre gerenciamento de tempo e priorização algumas vezes, então decidi documentar ~para economizar tempo~. Meu foco aqui são os líderes técnicos, mas usem como quiserem, tem ideias genéricas que podem ser aplicadas em outros contextos. &lt;a href="https://www.ted.com/talks/michael_bungay_stanier_how_to_tame_your_advice_monster"&gt;Advice Monster&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Como líder, você tem …&lt;/p&gt;</summary><content type="html">&lt;p&gt;Como dev e como manager, já tive essa conversa sobre gerenciamento de tempo e priorização algumas vezes, então decidi documentar ~para economizar tempo~. Meu foco aqui são os líderes técnicos, mas usem como quiserem, tem ideias genéricas que podem ser aplicadas em outros contextos. &lt;a href="https://www.ted.com/talks/michael_bungay_stanier_how_to_tame_your_advice_monster"&gt;Advice Monster&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Como líder, você tem responsabilidades extras, mas a expectativa é que você continue programando, com impacto crescente no que você faz. A conta não fecha. Gerenciar essa expectativa e todas as responsabilidades é o desafio e &lt;strong&gt;você vai se cobrar por não conseguir fazer tudo&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Essas são minhas ideias básicas para facilitar decisões de gerenciamento de tempo &lt;strong&gt;pessoal&lt;/strong&gt;. Suas decisões impactam o resultado da empresa, mas a base de tudo é pensar no melhor uso do seu tempo.&lt;/p&gt;
@@ -128,10 +213,10 @@ was simple.&lt;/p&gt;
 &lt;p&gt;It was really obvious to me that it should be a noop to database. Even Stack Overflow
 &lt;a class="reference external" href="https://stackoverflow.com/a/33191630/617395"&gt;had a response confirming that&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;The first migration locked our database because it dropped and recreated a constraint.&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;SET&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;CONSTRAINTS&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;IMMEDIATE&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="k"&gt;ALTER&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;TABLE&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;DROP&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;CONSTRAINT&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="k"&gt;ALTER&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;TABLE&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;ADD&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;CONSTRAINT&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="k"&gt;FOREIGN&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;KEY&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;REFERENCES&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_author&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;DEFERRABLE&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;INITIALLY&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;DEFERRED&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;SET&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;CONSTRAINTS&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;IMMEDIATE&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;ALTER&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;TABLE&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;DROP&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;CONSTRAINT&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="k"&gt;ALTER&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;TABLE&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;ADD&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;CONSTRAINT&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_book_author_id_eaa1580d_fk_core_author_id&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="k"&gt;FOREIGN&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;KEY&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;author_id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;REFERENCES&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;core_author&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;id&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;DEFERRABLE&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;INITIALLY&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;DEFERRED&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;Sad day, but right after that I prepared to run the second step. That time I
 checked the generated SQL with &lt;tt class="docutils literal"&gt;sqlmigrate&lt;/tt&gt; command and discovered it will
@@ -181,12 +266,12 @@ and the overhead is minimal, only when you have database migrations.&lt;/p&gt;
 pytest-xdist don't have a global setup and teardown.&lt;/p&gt;
 &lt;p&gt;Now I have a small hack, working great so far. This is the script running our
 tests:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;./manage.py shell -c &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;./manage.py&lt;span class="w"&gt; &lt;/span&gt;shell&lt;span class="w"&gt; &lt;/span&gt;-c&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
 &lt;span class="s2"&gt;from django.test.utils import setup_databases&lt;/span&gt;
 &lt;span class="s2"&gt;from xdist.plugin import pytest_xdist_auto_num_workers&lt;/span&gt;
 &lt;span class="s2"&gt;setup_databases(verbosity=True, interactive=False, parallel=pytest_xdist_auto_num_workers())&lt;/span&gt;
 &lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
-pytest --reuse-db -n auto
+pytest&lt;span class="w"&gt; &lt;/span&gt;--reuse-db&lt;span class="w"&gt; &lt;/span&gt;-n&lt;span class="w"&gt; &lt;/span&gt;auto
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;Django unittests generate names like &lt;tt class="docutils literal"&gt;test_yourdb_1&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_2&lt;/tt&gt; and
 &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;pytest-django&lt;/span&gt;&lt;/tt&gt; generate names like &lt;tt class="docutils literal"&gt;test_yourdb_gw0&lt;/tt&gt;, &lt;tt class="docutils literal"&gt;test_yourdb_gw1&lt;/tt&gt;, their
@@ -522,8 +607,8 @@ downtime.&lt;/p&gt;
 &lt;p&gt;&lt;tt class="docutils literal"&gt;&amp;quot;You do not have sufficient permissions to access this page.&amp;quot;&lt;/tt&gt;&lt;/p&gt;
 &lt;p&gt;Ok, I just copied my database and my code, just changing configurations. &lt;a class="reference external" href="https://www.google.com/webhpq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22&amp;amp;oq=wordpress+%22You+do+not+have+sufficient+permissions+to+access+this+page.%22"&gt;Google have a lot of results about this issue&lt;/a&gt;, but it is not a simple problem. This message have a lot of meanings, maybe you just don't have access to database.&lt;/p&gt;
 &lt;p&gt;I used almost a day reading Google results, but no one solved my problem. Of course, after I decided to stop, I get my &lt;tt class="docutils literal"&gt;&lt;span class="pre"&gt;wp-config.php&lt;/span&gt;&lt;/tt&gt; files (development and production) and diffed then (&lt;a class="reference external" href="http://www.quickdiff.com"&gt;http://www.quickdiff.com&lt;/a&gt; is awesome).&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="gd"&gt;- $table_prefix = &amp;#39;wpProject_&amp;#39;;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="gi"&gt;+ $table_prefix = &amp;#39;wpproject_&amp;#39;;&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="gd"&gt;- $table_prefix = &amp;#39;wpProject_&amp;#39;;&lt;/span&gt;
+&lt;span class="gi"&gt;+ $table_prefix = &amp;#39;wpproject_&amp;#39;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;If you know a bit about MySQL, you know tables are not case sensitive in Windows. Wordpress don't care about that and don't give you any hint. So, if you found this post because you had a similar problem, go check your configurations.&lt;/p&gt;
 &lt;p&gt;Just to make it obvious to anyone trying to solve the problem: &lt;strong&gt;TABLE PREFIX IS CASE SENSITIVE&lt;/strong&gt;. Of course, maybe it is not the answer you need, because the &amp;quot;error message&amp;quot; does not give you much information.&lt;/p&gt;
@@ -720,24 +805,24 @@ downtime.&lt;/p&gt;
     &lt;span class="n"&gt;main&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;In your &lt;tt class="docutils literal"&gt;app.yaml&lt;/tt&gt;, just send everything to your &lt;tt class="docutils literal"&gt;helloworld.py&lt;/tt&gt; app:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;application&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;sample-app&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="nt"&gt;version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="nt"&gt;runtime&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="nt"&gt;api_version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;application&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;sample-app&lt;/span&gt;
+&lt;span class="nt"&gt;version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;
+&lt;span class="nt"&gt;runtime&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;python&lt;/span&gt;
+&lt;span class="nt"&gt;api_version&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;1&lt;/span&gt;
 
-&lt;span class="nt"&gt;handlers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="p p-Indicator"&gt;-&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;url&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;/.*&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
-&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;helloworld.py&lt;/span&gt;&lt;span class="w"&gt;&lt;/span&gt;
+&lt;span class="nt"&gt;handlers&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="p p-Indicator"&gt;-&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;url&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;/.*&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nt"&gt;script&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="l l-Scalar l-Scalar-Plain"&gt;helloworld.py&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;Run &lt;tt class="docutils literal"&gt;dev_appserver.py&lt;/tt&gt; to test (you already know how to do it if you read Getting Started).&lt;/p&gt;
 &lt;p&gt;It works nice with last Bottle (v0.9.1). All Google App Engine features are decoupled from webapp, so you can use database, user authentication and others with Bottle.&lt;/p&gt;
 </content><category term="programming"></category><category term="bottle"></category><category term="appengine"></category></entry><entry><title>Building Scilab to GSoC</title><link href="https://iurisilv.io/2011/04/building-scilab-to-gsoc.html" rel="alternate"></link><published>2011-04-28T00:00:00-03:00</published><updated>2011-04-28T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-04-28:/2011/04/building-scilab-to-gsoc.html</id><summary type="html">&lt;p&gt;My first task was build Scilab project. It is a huge project, and first time I did it I really didn't know how to do it. I just tried to build, checked the error message &lt;cite&gt;&amp;quot;some lib not found&amp;quot;&lt;/cite&gt;, installed that lib, tried to build again and again... dozen of …&lt;/p&gt;</summary><content type="html">&lt;p&gt;My first task was build Scilab project. It is a huge project, and first time I did it I really didn't know how to do it. I just tried to build, checked the error message &lt;cite&gt;&amp;quot;some lib not found&amp;quot;&lt;/cite&gt;, installed that lib, tried to build again and again... dozen of times.&lt;/p&gt;
 &lt;p&gt;After that, of course I researched about how to build it in a better way. It is really easy using Ubuntu. First of all, just clone Scilab repository with git. I used YaSp branch, but it works to master too. After checkout, build all dependencies (the trick part I didn't know):&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ apt-get build-dep scilab
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;apt-get&lt;span class="w"&gt; &lt;/span&gt;build-dep&lt;span class="w"&gt; &lt;/span&gt;scilab
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;In scilab directory, just configure and make project:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ ./configure
-$ make
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;./configure
+$&lt;span class="w"&gt; &lt;/span&gt;make
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;This post looks really simple, but it is my first post during GSoC and solved a big issue to me (build dependencies).&lt;/p&gt;
 </content><category term="programming"></category><category term="gsoc"></category></entry><entry><title>We Won Sercomtel University Contest</title><link href="https://iurisilv.io/2011/01/we-won-sercomtel-university-contest.html" rel="alternate"></link><published>2011-01-27T00:00:00-02:00</published><updated>2011-01-27T00:00:00-02:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-01-27:/2011/01/we-won-sercomtel-university-contest.html</id><summary type="html">&lt;p&gt;During the second half of 2010, I attended the Sercomtel University Contest in the apps category, developing an Android app to search for bus routes in Londrina city.&lt;/p&gt;

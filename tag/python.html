@@ -24,7 +24,113 @@
 
             <aside id="featured" class="body">
                 <article>
-                    <h1 class="entry-title"><a href="../2021/04/django-sessions-to-cache.html">Django Sessions to cache</a></h1>
+                    <h1 class="entry-title"><a href="../2023/01/faster-django-migrations-with-django-migrations-ci.html">Faster Django migrations with django-migrations-ci</a></h1>
+<footer class="post-info">
+        <abbr class="published" title="2023-01-09T00:00:00-03:00">
+                Published: Mon 09 January 2023
+        </abbr>
+
+        <address class="vcard author">
+                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+        </address>
+<p>In <a href="../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> </p>
+</footer><!-- /.post-info --><p>Django migrations are really slow. It is an <a href="https://code.djangoproject.com/ticket/29898">open issue</a> for years.
+It was even an <a href="https://gist.github.com/aryan9600/b1c2eaf445006c17e02e7677cf1098d5">Google Summer of Code proposal</a>.</p>
+<p>For small projects, it take some seconds to run all your migrations and it is fine. A few developers
+can work on it for a long time. For a large project, it is not that simple.</p>
+<p>Our largest project today has 273 Django models and did ~1000 migrations in 4 years. Sometimes it
+takes 15 minutes on CI, even with a lot of optimizations. Django <code>squashmigrations</code> command do
+optimizations, but could be a lot better. After a lot of squashes, it's still slow.</p>
+<p>It was really bad for us, CI failed a lot because of timeouts or random postgres failures after
+some time trying to always migrate.</p>
+<p>We tried some things to improve our CI pipeline.</p>
+<h2>Do not migrate on CI</h2>
+<p>A common advice to improve this time is to not run migrations on CI. It is fast.</p>
+<p>You can override the <a href="https://docs.djangoproject.com/en/4.1/ref/settings/#std-setting-MIGRATION_MODULES"><code>MIGRATIONS_MODULES</code></a> for testing:</p>
+<div class="highlight"><pre><span></span><code><span class="n">MIGRATION_MODULES</span> <span class="o">=</span> <span class="p">{</span><span class="n">app</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">app</span> <span class="ow">in</span> <span class="n">INSTALLED_APPS</span><span class="p">}</span>
+</code></pre></div>
+
+<p>It is not really safe, because now you run migrations only on deployments, which is risky.
+Large projects have data migrations, migration bugs and other issues that you want to discover
+before production. So we added another stage to run migrations and our problem was back.</p>
+<h2>Reuse database</h2>
+<p>In the past <a href="/2021/03/faster-parallel-pytest-django.html">I had to hack pytest-django setup to run less migrations</a>.
+This was useful to know how to separate migrations and test steps.</p>
+<p>I changed our pipeline to dump the migrated database to a SQL file and cached it on GitLab CI.</p>
+<p>Some old code examples from our CI:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Don&#39;t try to copy it, please!</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">$CI_PROJECT_DIR</span>/djangomigrations.sql<span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>psql<span class="w"> </span>-h<span class="w"> </span><span class="nv">$DB_HOST</span><span class="w"> </span>-U<span class="w"> </span><span class="nv">$POSTGRES_USER</span><span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;CREATE DATABASE </span><span class="nv">$DB_NAME</span><span class="s2">;&quot;</span>
+<span class="w">    </span>pg_restore<span class="w"> </span>-h<span class="w"> </span><span class="nv">$DB_HOST</span><span class="w"> </span>-U<span class="w"> </span><span class="nv">$POSTGRES_USER</span><span class="w"> </span>-d<span class="w"> </span><span class="nv">$DB_NAME</span><span class="w"> </span><span class="nv">$CI_PROJECT_DIR</span>/djangomigrations.sql
+<span class="k">else</span>
+<span class="w">    </span><span class="nb">time</span><span class="w"> </span>./manage.py<span class="w"> </span>setup_test_db
+<span class="w">    </span>pg_dump<span class="w"> </span>-F<span class="w"> </span>c<span class="w"> </span>-h<span class="w"> </span><span class="nv">$DB_HOST</span><span class="w"> </span>-U<span class="w"> </span><span class="nv">$POSTGRES_USER</span><span class="w"> </span><span class="nv">$DB_NAME</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$CI_PROJECT_DIR</span>/djangomigrations.sql
+<span class="k">fi</span>
+<span class="nb">time</span><span class="w"> </span>./manage.py<span class="w"> </span>clone_test_db
+</code></pre></div>
+
+<p>Commands <code>setup_test_db</code> and <code>clone_test_db</code> were just a few lines of Python code, but I'll not paste it here.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># GitLab CI cache work this way.</span>
+<span class="nt">cache</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">key</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">files</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;requirements.txt&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/migrations/*.py&quot;</span>
+<span class="w">  </span><span class="nt">paths</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">djangomigrations.sql</span>
+<span class="w">  </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always</span>
+</code></pre></div>
+
+<p>Perfect! Running a migration state that already ran in the past, GitLab CI give me an
+SQL file with this state and I restore it to my database. It took our database migrations from
+minutes to just a few seconds. Works for me!</p>
+<h2>django-migrations-ci</h2>
+<p>I went to DjangoCon US to <a href="https://2022.djangocon.us/talks/django-from-queryset-to-serialization/">talk about django-qserializer</a>. There I had some conversations about how migrations are slow.
+More people had the same issue, so I started <a href="https://github.com/buserbrasil/django-migrations-ci">django-migrations-ci</a>
+during sprint days of the event.</p>
+<p>Using this module, it is just one extra command to setup your test database:</p>
+<div class="highlight"><pre><span></span><code><span class="o">./</span><span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">migrateci</span>
+<span class="o">./</span><span class="n">manage</span><span class="o">.</span><span class="n">py</span> <span class="n">test</span> <span class="o">--</span><span class="n">keepdb</span>
+</code></pre></div>
+
+<p>Following my original idea, it started using CI caching to provide a storage layer.</p>
+<p>I implemented it to sqlite3, mysql and postgres. Never tried to implement for oracle, but it is easy to add
+other databases. Also, I documented how to integrate it with GitHub Actions and GitLab CI.</p>
+<h2>Partial caching</h2>
+<p>After this initial sprint, I replaced the CI caching with a custom storage, easy to integrate
+with anything <a href="https://django-storages.readthedocs.io/en/latest/"><code>django-storages</code></a> support.</p>
+<p>I did that to support partial migrations. It was impossible to do it with CI caching, because they don't have
+an API to easily choose the cache I want.</p>
+<p>When a new migration is added, there is no migration state cached, so all migrations are processed
+again. To fix this use case, I wanted to get a previous state, restore from it and run only new
+migrations, which is reasonably fast.</p>
+<h2>Use it</h2>
+<p>Now I can say it is easy to reuse my solution and it really adds value to any project where
+your migrations take more than a few seconds.</p>
+<p>Install it, configure an external storage and add a command to your CI scripts.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">storages.backends.s3boto3</span> <span class="kn">import</span> <span class="n">S3Boto3Storage</span>
+
+<span class="k">class</span> <span class="nc">MigrateCIStorage</span><span class="p">(</span><span class="n">S3Boto3Storage</span><span class="p">):</span>
+    <span class="n">bucket_name</span> <span class="o">=</span> <span class="s2">&quot;mybucket-migrateci-cache&quot;</span>
+    <span class="n">region_name</span> <span class="o">=</span> <span class="s2">&quot;us-east-1&quot;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>./manage.py<span class="w"> </span>migrateci<span class="w"> </span>--storage-class<span class="w"> </span>path.to.MigrateCIStorage
+</code></pre></div><p>There are <a href="../2023/01/faster-django-migrations-with-django-migrations-ci.html#disqus_thread">comments</a>.</p>                </article>
+            </aside><!-- /#featured -->
+                <section id="content" class="body">
+                    <h1>Other articles</h1>
+                    <hr />
+                    <ol id="posts-list" class="hfeed">
+
+            <li><article class="hentry">
+                <header>
+                    <h1><a href="../2021/04/django-sessions-to-cache.html" rel="bookmark"
+                           title="Permalink to Django Sessions to cache">Django Sessions to cache</a></h1>
+                </header>
+
+                <div class="entry-content">
 <footer class="post-info">
         <abbr class="published" title="2021-04-28T00:00:00-03:00">
                 Published: Wed 28 April 2021
@@ -35,67 +141,13 @@
         </address>
 <p>In <a href="../category/programming.html">programming</a>.</p>
 <p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> </p>
-</footer><!-- /.post-info --><p>Django sessions works great since the begining, you can do a site with them and
+</footer><!-- /.post-info -->                <p>Django sessions works great since the begining, you can do a site with them and
 never really understand how sessions works, but you can't scale to thousands of
 simultaneous users writing all your sessions to database. The database can be a
-huge bottleneck here and you should remove all unnecessary reading and writing.</p>
-<p>Fortunately, Django has good alternatives almost built-in. They provide other
-session backends, like <code>cached_db</code> and <code>cache</code>. It has <a href="https://docs.djangoproject.com/en/3.2/topics/http/sessions/">extensive docs</a>, but I had some issues migrating to cache backend.</p>
-<p>Doing that in production means current sessions can't be removed during migration.</p>
-<p>I decided for the easy path:</p>
-<ol>
-<li>Change <code>SESSION_ENGINE='django.contrib.sessions.backends.cached_db'</code>.</li>
-<li>Wait some days to have all useful sessions cached. More than <code>SESSION_COOKIE_AGE</code> was
-enough to me.</li>
-<li>Change <code>SESSION_ENGINE='django.contrib.sessions.backends.cache'</code>.</li>
-</ol>
-<p>It doesn't work.</p>
-<p>Both session engines define keys as <code>key_prefix + session_id</code>, with different
-prefixes. <a href="https://github.com/django/django/blob/ca9872905559026af82000e46cde6f7dedc897b6/docs/topics/http/sessions.txt#L827-L834">Django do that to avoid namespace clash</a>.
-It is a sane default, but I want namespace clash to simplify the migration path.</p>
-<p>I can define custom session backends with the key prefixes I want. Each one
-should be a file because <code>SESSION_ENGINE</code> must be a module with a <code>SessionStore</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># base.py</span>
-<span class="k">class</span> <span class="nc">BaseSessionStoreMixin</span><span class="p">:</span>
-    <span class="n">cache_key_prefix</span> <span class="o">=</span> <span class="s1">&#39;busersessionstore&#39;</span>
-</code></pre></div>
-
-<div class="highlight"><pre><span></span><code><span class="c1"># cache.py</span>
-<span class="kn">from</span> <span class="nn">django.contrib.sessions.backends</span> <span class="kn">import</span> <span class="n">cache</span>
-
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">base</span>
-
-
-<span class="k">class</span> <span class="nc">SessionStore</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">BaseSessionStoreMixin</span><span class="p">,</span> <span class="n">cache</span><span class="o">.</span><span class="n">SessionStore</span><span class="p">):</span>
-    <span class="k">pass</span>
-</code></pre></div>
-
-<div class="highlight"><pre><span></span><code><span class="c1"># cached_db.py</span>
-<span class="kn">from</span> <span class="nn">django.contrib.sessions.backends</span> <span class="kn">import</span> <span class="n">cached_db</span>
-
-<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">base</span>
-
-
-<span class="k">class</span> <span class="nc">SessionStore</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">BaseSessionStoreMixin</span><span class="p">,</span> <span class="n">cached_db</span><span class="o">.</span><span class="n">SessionStore</span><span class="p">):</span>
-    <span class="k">pass</span>
-</code></pre></div>
-
-<p>Now I can do the same thing, using my session engines.</p>
-<ol>
-<li>Change <code>SESSION_ENGINE='myproject.sessions.cached_db'</code>.</li>
-<li>Wait some days to have all useful sessions cached. More than <code>SESSION_COOKIE_AGE</code> was
-enough to me.</li>
-<li>Change <code>SESSION_ENGINE='myproject.sessions.cache'</code>.</li>
-</ol>
-<p>It works!</p>
-<p>Just as disclaimer, memcached don't have a good way to make this data durable.
-If memcached node restart, all data is lost. We're using redis with replicas,
-so I lose all data only if all nodes explode at the same time.</p><p>There are <a href="../2021/04/django-sessions-to-cache.html#disqus_thread">comments</a>.</p>                </article>
-            </aside><!-- /#featured -->
-                <section id="content" class="body">
-                    <h1>Other articles</h1>
-                    <hr />
-                    <ol id="posts-list" class="hfeed">
+huge bottleneck here and you should remove all unnecessary …</p>
+                <a class="readmore" href="../2021/04/django-sessions-to-cache.html">read more</a>
+<p>There are <a href="../2021/04/django-sessions-to-cache.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
+            </article></li>
 
             <li><article class="hentry">
                 <header>

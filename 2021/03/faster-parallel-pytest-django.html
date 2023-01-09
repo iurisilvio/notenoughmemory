@@ -55,12 +55,12 @@ and the overhead is minimal, only when you have database migrations.</p>
 pytest-xdist don't have a global setup and teardown.</p>
 <p>Now I have a small hack, working great so far. This is the script running our
 tests:</p>
-<div class="highlight"><pre><span></span>./manage.py shell -c <span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span>./manage.py<span class="w"> </span>shell<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
 <span class="s2">from django.test.utils import setup_databases</span>
 <span class="s2">from xdist.plugin import pytest_xdist_auto_num_workers</span>
 <span class="s2">setup_databases(verbosity=True, interactive=False, parallel=pytest_xdist_auto_num_workers())</span>
 <span class="s2">&quot;</span>
-pytest --reuse-db -n auto
+pytest<span class="w"> </span>--reuse-db<span class="w"> </span>-n<span class="w"> </span>auto
 </pre></div>
 <p>Django unittests generate names like <tt class="docutils literal">test_yourdb_1</tt>, <tt class="docutils literal">test_yourdb_2</tt> and
 <tt class="docutils literal"><span class="pre">pytest-django</span></tt> generate names like <tt class="docutils literal">test_yourdb_gw0</tt>, <tt class="docutils literal">test_yourdb_gw1</tt>, their

@@ -4,38 +4,45 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="generator" content="Pelican" />
-        <title>iurisilvio - django</title>
-        <link rel="stylesheet" href="../theme/css/main.css" />
+        <title>Faster Django migrations with django-migrations-ci</title>
+        <link rel="stylesheet" href="../../theme/css/main.css" />
         <link href="https://iurisilv.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="iurisilvio Atom Feed" />
+        <meta name="description" content="Django migrations are really slow. It is an open issue for years. It was even an Google Summer of Code proposal. For small projects, it take some..." />
 </head>
 
 <body id="index" class="home">
         <header id="banner" class="body">
-                <h1><a href="../">iurisilvio</a></h1>
+                <h1><a href="../../">iurisilvio</a></h1>
                 <nav><ul>
-                    <li><a href="../category/devops.html">devops</a></li>
-                    <li><a href="../category/issue.html">issue</a></li>
-                    <li><a href="../category/misc.html">misc</a></li>
-                    <li><a href="../category/productivity.html">productivity</a></li>
-                    <li><a href="../category/programming.html">programming</a></li>
-                    <li><a href="../category/stats.html">stats</a></li>
+                    <li><a href="../../category/devops.html">devops</a></li>
+                    <li><a href="../../category/issue.html">issue</a></li>
+                    <li><a href="../../category/misc.html">misc</a></li>
+                    <li><a href="../../category/productivity.html">productivity</a></li>
+                    <li class="active"><a href="../../category/programming.html">programming</a></li>
+                    <li><a href="../../category/stats.html">stats</a></li>
                 </ul></nav>
         </header><!-- /#banner -->
+<section id="content" class="body">
+  <article>
+    <header>
+      <h1 class="entry-title">
+        <a href="../../2023/01/faster-django-migrations-with-django-migrations-ci.html" rel="bookmark"
+           title="Permalink to Faster Django migrations with django-migrations-ci">Faster Django migrations with django-migrations-ci</a></h1>
+<a href="https://twitter.com/share" class="twitter-share-button" data-count="horizontal" data-via="iurisilvio">Tweet</a><script type="text/javascript" src="https://platform.twitter.com/widgets.js"></script>
+    </header>
 
-            <aside id="featured" class="body">
-                <article>
-                    <h1 class="entry-title"><a href="../2023/01/faster-django-migrations-with-django-migrations-ci.html">Faster Django migrations with django-migrations-ci</a></h1>
+    <div class="entry-content">
 <footer class="post-info">
         <abbr class="published" title="2023-01-09T00:00:00-03:00">
                 Published: Mon 09 January 2023
         </abbr>
 
         <address class="vcard author">
-                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
+                By                         <a class="url fn" href="../../author/iuri-de-silvio.html">Iuri de Silvio</a>
         </address>
-<p>In <a href="../category/programming.html">programming</a>.</p>
-<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> </p>
-</footer><!-- /.post-info --><p>Django migrations are really slow. It is an <a href="https://code.djangoproject.com/ticket/29898">open issue</a> for years.
+<p>In <a href="../../category/programming.html">programming</a>.</p>
+<p>tags: <a href="../../tag/python.html">python</a> <a href="../../tag/django.html">django</a> </p>
+</footer><!-- /.post-info -->      <p>Django migrations are really slow. It is an <a href="https://code.djangoproject.com/ticket/29898">open issue</a> for years.
 It was even an <a href="https://gist.github.com/aryan9600/b1c2eaf445006c17e02e7677cf1098d5">Google Summer of Code proposal</a>.</p>
 <p>For small projects, it take some seconds to run all your migrations and it is fine. A few developers
 can work on it for a long time. For a large project, it is not that simple.</p>
@@ -117,121 +124,26 @@ your migrations take more than a few seconds.</p>
 </code></pre></div>
 
 <div class="highlight"><pre><span></span><code>$<span class="w"> </span>./manage.py<span class="w"> </span>migrateci<span class="w"> </span>--storage-class<span class="w"> </span>path.to.MigrateCIStorage
-</code></pre></div><p>There are <a href="../2023/01/faster-django-migrations-with-django-migrations-ci.html#disqus_thread">comments</a>.</p>                </article>
-            </aside><!-- /#featured -->
-                <section id="content" class="body">
-                    <h1>Other articles</h1>
-                    <hr />
-                    <ol id="posts-list" class="hfeed">
+</code></pre></div>
+    </div><!-- /.entry-content -->
+    <div class="comments">
+      <h2>Comments !</h2>
+      <div id="disqus_thread"></div>
+      <script type="text/javascript">
+        var disqus_shortname = 'notenoughmemory';
+        var disqus_identifier = '2023/01/faster-django-migrations-with-django-migrations-ci.html';
+        var disqus_url = '../../2023/01/faster-django-migrations-with-django-migrations-ci.html';
+        (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//notenoughmemory.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+      </script>
+      <noscript>Please enable JavaScript to view the comments.</noscript>
+    </div>
 
-            <li><article class="hentry">
-                <header>
-                    <h1><a href="../2021/04/django-sessions-to-cache.html" rel="bookmark"
-                           title="Permalink to Django Sessions to cache">Django Sessions to cache</a></h1>
-                </header>
-
-                <div class="entry-content">
-<footer class="post-info">
-        <abbr class="published" title="2021-04-28T00:00:00-03:00">
-                Published: Wed 28 April 2021
-        </abbr>
-
-        <address class="vcard author">
-                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
-        </address>
-<p>In <a href="../category/programming.html">programming</a>.</p>
-<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> </p>
-</footer><!-- /.post-info -->                <p>Django sessions works great since the begining, you can do a site with them and
-never really understand how sessions works, but you can't scale to thousands of
-simultaneous users writing all your sessions to database. The database can be a
-huge bottleneck here and you should remove all unnecessary …</p>
-                <a class="readmore" href="../2021/04/django-sessions-to-cache.html">read more</a>
-<p>There are <a href="../2021/04/django-sessions-to-cache.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
-            </article></li>
-
-            <li><article class="hentry">
-                <header>
-                    <h1><a href="../2021/03/my-django-contributions.html" rel="bookmark"
-                           title="Permalink to My Django contributions">My Django contributions</a></h1>
-                </header>
-
-                <div class="entry-content">
-<footer class="post-info">
-        <abbr class="published" title="2021-03-17T00:00:00-03:00">
-                Published: Wed 17 March 2021
-        </abbr>
-
-        <address class="vcard author">
-                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
-        </address>
-<p>In <a href="../category/programming.html">programming</a>.</p>
-<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> </p>
-</footer><!-- /.post-info -->                <p>I started contributing to Django core after a failure in our project.</p>
-<p>I had to rename a model attribute without touching our database. The solution
-was simple.</p>
-<div class="highlight"><pre><span></span><span class="c1"># Simple attribute to rename.</span>
-<span class="n">author</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s1">&#39;Author&#39;</span><span class="p">)</span>
-
-<span class="c1"># 1. Add db_column param.</span>
-<span class="n">author</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s1">&#39;Author&#39;</span><span class="p">,</span> <span class="n">db_column</span><span class="o">=</span><span class="s1">&#39;author&#39;</span><span class="p">)</span>
-
-<span class="c1"># 2. Change the attribute name …</span></pre></div>
-                <a class="readmore" href="../2021/03/my-django-contributions.html">read more</a>
-<p>There are <a href="../2021/03/my-django-contributions.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
-            </article></li>
-
-            <li><article class="hentry">
-                <header>
-                    <h1><a href="../2021/03/faster-parallel-pytest-django.html" rel="bookmark"
-                           title="Permalink to Faster parallel pytest-django">Faster parallel pytest-django</a></h1>
-                </header>
-
-                <div class="entry-content">
-<footer class="post-info">
-        <abbr class="published" title="2021-03-08T08:00:00-03:00">
-                Published: Mon 08 March 2021
-        </abbr>
-
-        <address class="vcard author">
-                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
-        </address>
-<p>In <a href="../category/programming.html">programming</a>.</p>
-<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> <a href="../tag/pytest.html">pytest</a> </p>
-</footer><!-- /.post-info -->                <p>We at Buser recently migrated from Django unittests to pytest. It is amazing
-how much you can improve your tests with pytest.</p>
-<p>Unfortunately our CI/CD was really slow after this change.</p>
-<p>I discovered parallel <tt class="docutils literal"><span class="pre">pytest-django</span></tt> do their setup different than Django
-unittests. Django create a template database and copy …</p>
-                <a class="readmore" href="../2021/03/faster-parallel-pytest-django.html">read more</a>
-<p>There are <a href="../2021/03/faster-parallel-pytest-django.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
-            </article></li>
-
-            <li><article class="hentry">
-                <header>
-                    <h1><a href="../2021/01/honeycomb-django-tricks.html" rel="bookmark"
-                           title="Permalink to Honeycomb Django tricks">Honeycomb Django tricks</a></h1>
-                </header>
-
-                <div class="entry-content">
-<footer class="post-info">
-        <abbr class="published" title="2021-01-10T08:00:00-03:00">
-                Published: Sun 10 January 2021
-        </abbr>
-
-        <address class="vcard author">
-                By                         <a class="url fn" href="../author/iuri-de-silvio.html">Iuri de Silvio</a>
-        </address>
-<p>In <a href="../category/programming.html">programming</a>.</p>
-<p>tags: <a href="../tag/python.html">python</a> <a href="../tag/django.html">django</a> <a href="../tag/honeycomb.html">honeycomb</a> </p>
-</footer><!-- /.post-info -->                <p><a class="reference external" href="https://www.honeycomb.io/">Honeycomb</a> is the observability tool we use everyday at <a class="reference external" href="https://www.buser.com.br/">Buser</a>. They help us tracking application bottlenecks, slow database queries, slow requests, requests with too many queries and much more.</p>
-<p>Their automatic instrumentation with <a class="reference external" href="https://docs.honeycomb.io/getting-data-in/python/beeline/">beeline</a> is a good start, but at some point we had to extend the default behaviour.</p>
-<div class="section" id="custom-request-data">
-<h2>Custom …</h2></div>
-                <a class="readmore" href="../2021/01/honeycomb-django-tricks.html">read more</a>
-<p>There are <a href="../2021/01/honeycomb-django-tricks.html#disqus_thread">comments</a>.</p>                </div><!-- /.entry-content -->
-            </article></li>
-                </ol><!-- /#posts-list -->
-                </section><!-- /#content -->
+  </article>
+</section>
         <section id="extras" class="body">
                 <div class="blogroll">
                         <h2>links</h2>

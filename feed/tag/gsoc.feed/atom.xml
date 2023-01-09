@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom"><title>iurisilvio - gsoc</title><link href="https://iurisilv.io/" rel="alternate"></link><link href="https://iurisilv.io/feed/tag/gsoc.feed/atom.xml" rel="self"></link><id>https://iurisilv.io/</id><updated>2011-04-28T00:00:00-03:00</updated><entry><title>Building Scilab to GSoC</title><link href="https://iurisilv.io/2011/04/building-scilab-to-gsoc.html" rel="alternate"></link><published>2011-04-28T00:00:00-03:00</published><updated>2011-04-28T00:00:00-03:00</updated><author><name>Iuri de Silvio</name></author><id>tag:iurisilv.io,2011-04-28:/2011/04/building-scilab-to-gsoc.html</id><summary type="html">&lt;p&gt;My first task was build Scilab project. It is a huge project, and first time I did it I really didn't know how to do it. I just tried to build, checked the error message &lt;cite&gt;&amp;quot;some lib not found&amp;quot;&lt;/cite&gt;, installed that lib, tried to build again and again... dozen of …&lt;/p&gt;</summary><content type="html">&lt;p&gt;My first task was build Scilab project. It is a huge project, and first time I did it I really didn't know how to do it. I just tried to build, checked the error message &lt;cite&gt;&amp;quot;some lib not found&amp;quot;&lt;/cite&gt;, installed that lib, tried to build again and again... dozen of times.&lt;/p&gt;
 &lt;p&gt;After that, of course I researched about how to build it in a better way. It is really easy using Ubuntu. First of all, just clone Scilab repository with git. I used YaSp branch, but it works to master too. After checkout, build all dependencies (the trick part I didn't know):&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ apt-get build-dep scilab
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;apt-get&lt;span class="w"&gt; &lt;/span&gt;build-dep&lt;span class="w"&gt; &lt;/span&gt;scilab
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;In scilab directory, just configure and make project:&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ ./configure
-$ make
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;./configure
+$&lt;span class="w"&gt; &lt;/span&gt;make
 &lt;/pre&gt;&lt;/div&gt;
 &lt;p&gt;This post looks really simple, but it is my first post during GSoC and solved a big issue to me (build dependencies).&lt;/p&gt;
 </content><category term="programming"></category><category term="gsoc"></category></entry></feed>
